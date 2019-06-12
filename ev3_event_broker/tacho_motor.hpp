@@ -16,27 +16,22 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
+#pragma once
 
-#include <unistd.h>
+namespace ev3_event_broker {
+class TachoMotor {
+private:
+	int m_fd_command;
+	int m_fd_position;
+	int m_fd_duty_cycle;
 
-#include <ev3_event_broker/socket.hpp>
-#include <ev3_event_broker/tacho_motor.hpp>
+public:
+	TachoMotor(const char* path);
+	~TachoMotor();
 
-using namespace ev3_event_broker;
+	void reset();
+	int get_position();
+	void set_duty_cycle(int duty_cycle);
+};
 
-int main(int argc, char *argv[]) {
-	TachoMotor motor("motor/");
-	for (int i = -100; i <= 100; i++) {
-		motor.set_duty_cycle(i);
-		usleep(1000 * 100);
-	}
-	motor.reset();
-/*	UDPSocket sock(Address(0, 0, 0, 0, 4721));
-	Address addr;
-	Message msg;
-	while (sock.recv(addr, msg)) {
-		write(STDOUT_FILENO, msg.buf(), msg.size());
-		sock.send(addr, msg);
-	}*/
-}
+}  // namespace ev3_event_broker

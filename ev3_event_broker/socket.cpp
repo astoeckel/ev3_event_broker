@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <ev3_event_broker/error.hpp>
 #include <ev3_event_broker/socket.hpp>
 
 namespace ev3_event_broker {
@@ -35,13 +36,6 @@ namespace ev3_event_broker {
 /******************************************************************************
  * Helper functions                                                           *
  ******************************************************************************/
-
-#define ERR(X)                                                      \
-	do {                                                            \
-		if ((X) < 0) {                                              \
-			throw std::system_error(errno, std::system_category()); \
-		}                                                           \
-	} while (false)
 
 void addr_to_sockaddr(const Address &addr, struct sockaddr_in *sockaddr) {
 	bzero(reinterpret_cast<char*>(sockaddr), sizeof(*sockaddr));
@@ -71,22 +65,22 @@ UDPSocket::UDPSocket(Address addr) : m_sockfd(-1), m_addr(addr) {
 	int optval;
 
 	// Create the socket
-	ERR(m_sockfd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+	m_sockfd = err(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
 
 	// Mark the socket as reusable
 	optval = 1;
-	ERR(setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR,
+	err(setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR,
 	               static_cast<const void *>(&optval), sizeof(optval)));
 
 	// Enable broadcasting
 	optval = 1;
-	ERR(setsockopt(m_sockfd, SOL_SOCKET, SO_BROADCAST,
+	err(setsockopt(m_sockfd, SOL_SOCKET, SO_BROADCAST,
 	               static_cast<const void *>(&optval), sizeof(optval)));
 
 	// Bind to an address
 	struct sockaddr_in serveraddr;
 	addr_to_sockaddr(addr, &serveraddr);
-	ERR(bind(m_sockfd, reinterpret_cast<const struct sockaddr *>(&serveraddr),
+	err(bind(m_sockfd, reinterpret_cast<const struct sockaddr *>(&serveraddr),
 	         sizeof(serveraddr)));
 }
 

@@ -16,27 +16,27 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
+#include <cstring>
 
-#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#include <ev3_event_broker/socket.hpp>
-#include <ev3_event_broker/tacho_motor.hpp>
+#include <ev3_event_broker/error.hpp>
 
-using namespace ev3_event_broker;
+namespace ev3_event_broker {
 
-int main(int argc, char *argv[]) {
-	TachoMotor motor("motor/");
-	for (int i = -100; i <= 100; i++) {
-		motor.set_duty_cycle(i);
-		usleep(1000 * 100);
-	}
-	motor.reset();
-/*	UDPSocket sock(Address(0, 0, 0, 0, 4721));
-	Address addr;
-	Message msg;
-	while (sock.recv(addr, msg)) {
-		write(STDOUT_FILENO, msg.buf(), msg.size());
-		sock.send(addr, msg);
-	}*/
+static void cat_cstr(const char *path, const char *suffix, char *tar,
+                     size_t tar_size) {
+	strncpy(tar, path, tar_size - 1);
+	strncat(tar, suffix, tar_size - 1);
 }
+
+static int open_device_file(const char *device_path, const char *device_file,
+                            int flags, mode_t mode = 0) {
+	char filename[4096];
+	cat_cstr(device_path, device_file, filename, sizeof(filename));
+	return err(open(filename, flags, mode));
+}
+
+}  // namespace ev3_event_broker

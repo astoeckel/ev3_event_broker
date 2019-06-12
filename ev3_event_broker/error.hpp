@@ -16,27 +16,19 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
+#pragma once
 
-#include <unistd.h>
+#include <cerrno>
+#include <system_error>
 
-#include <ev3_event_broker/socket.hpp>
-#include <ev3_event_broker/tacho_motor.hpp>
+namespace ev3_event_broker {
 
-using namespace ev3_event_broker;
-
-int main(int argc, char *argv[]) {
-	TachoMotor motor("motor/");
-	for (int i = -100; i <= 100; i++) {
-		motor.set_duty_cycle(i);
-		usleep(1000 * 100);
+template <typename T>
+static T err(T res) {
+	if (res < 0) {
+		throw std::system_error(errno, std::system_category());
 	}
-	motor.reset();
-/*	UDPSocket sock(Address(0, 0, 0, 0, 4721));
-	Address addr;
-	Message msg;
-	while (sock.recv(addr, msg)) {
-		write(STDOUT_FILENO, msg.buf(), msg.size());
-		sock.send(addr, msg);
-	}*/
+	return res;
 }
+
+}  // namespace ev3_event_broker
