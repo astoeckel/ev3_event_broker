@@ -61,7 +61,7 @@ Address addr_from_sockaddr(const struct sockaddr_in *addr) {
  * UDPSocket Implementation                                                   *
  ******************************************************************************/
 
-UDPSocket::UDPSocket(Address addr) : m_sockfd(-1), m_addr(addr) {
+UDPSocket::UDPSocket(Address addr) : m_addr(addr), m_sockfd(-1) {
 	int optval;
 
 	// Create the socket
@@ -112,7 +112,7 @@ bool UDPSocket::send(const Address &addr, const Message &msg) {
 		ssize_t count = sendto(m_sockfd, msg.buf(), msg.size(), 0,
 		                       reinterpret_cast<struct sockaddr *>(&clientaddr),
 		                       sizeof(clientaddr));
-		if (count == msg.size()) {
+		if (count >= 0 && size_t(count) == msg.size()) {
 			return true;
 		} else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 			continue;
