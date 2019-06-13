@@ -43,14 +43,14 @@ int main(int argc, char *argv[]) {
 
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
+		    printf("Send motor_D position!\n");
 		    socket::Message msg(buf, buf_size);
 		    sock.send(broadcast_address, msg);
 		    return true;
 	    },
 	    source_id.name(), source_id.hash());
 
-	// TachoMotor motor_D("/sys/class/tacho_motor/motor0");
-	TachoMotor motor_D("motor/");
+	TachoMotor motor_D("/sys/class/tacho-motor/motor0");
 
 	EventLoop()
 	    .register_event(timer,
@@ -59,7 +59,6 @@ int main(int argc, char *argv[]) {
 		                    timer.consume_event();
 
 		                    // Send the motor position
-		                    printf("Send motor_D position!\n");
 		                    marshaller.write_position_sensor(
 		                        "motor_D", motor_D.get_position());
 		                    marshaller.flush();
