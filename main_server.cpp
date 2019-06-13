@@ -39,11 +39,10 @@ int main(int argc, char *argv[]) {
 
 	SourceId source_id("ev3");
 
-	Timer timer(1);
+	Timer timer(10);
 
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
-		    printf("Send motor_D position!\n");
 		    socket::Message msg(buf, buf_size);
 		    sock.send(broadcast_address, msg);
 		    return true;
