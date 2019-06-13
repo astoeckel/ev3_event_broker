@@ -65,14 +65,14 @@ int main(int argc, char *argv[]) {
 	EventLoop()
 	    .register_event(sock,
 	                    [&]() -> bool {
-	                    	printf("Received message\n");
 		                    socket::Address addr;
 		                    socket::Message msg;
 		                    if (!sock.recv(addr, msg)) {
-			                    listener.ip = addr;
-			                    Demarshaller().parse(listener, msg.buf(),
-			                                         msg.size());
+			                    return false;
 		                    }
+		                    listener.ip = addr;
+		                    Demarshaller().parse(listener, msg.buf(),
+		                                         msg.size());
 		                    return true;
 	                    })
 	    .run();

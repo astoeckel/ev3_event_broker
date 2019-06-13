@@ -138,7 +138,6 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 			m_sync = (m_sync << 8) | (*src++);
 			continue;
 		}
-
 		// Read the message header
 		if (size_t(src_end - src) < HEADER_SIZE) {
 			return;

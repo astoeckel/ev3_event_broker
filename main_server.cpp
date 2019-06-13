@@ -34,12 +34,12 @@ using namespace ev3_event_broker;
 int main(int argc, char *argv[]) {
 	uint16_t port = 4721;
 	socket::Address listen_address(0, 0, 0, 0, port);
-	socket::Address broadcast_address(192, 168, 180, 255, port);
+	socket::Address broadcast_address(192, 168, 178, 255, port);
 	socket::UDP sock(listen_address);
 
 	SourceId source_id("ev3");
 
-	Timer timer(1000);
+	Timer timer(1);
 
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 	    },
 	    source_id.name(), source_id.hash());
 
-	TachoMotor motor_D("/sys/class/tacho-motor/motor0");
+	TachoMotor motor_D("/sys/class/tacho-motor/motor1");
 
 	EventLoop()
 	    .register_event(timer,
