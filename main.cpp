@@ -22,58 +22,77 @@
 #include <unistd.h>
 
 #include <ev3_event_broker/event_loop.hpp>
+#include <ev3_event_broker/marshaller.hpp>
 #include <ev3_event_broker/socket.hpp>
 #include <ev3_event_broker/tacho_motor.hpp>
 #include <ev3_event_broker/timer.hpp>
 
 using namespace ev3_event_broker;
 
-int main(int argc, char *argv[]) {
-	//	TachoMotor motor("motor/");
-	//	for (int i = -100; i <= 100; i++) {
-	//		motor.set_duty_cycle(i);
-	//		usleep(1000 * 100);
-	//	}
-	//	motor.reset();
-
-	const char *device_id = "EV3_1";
-
+int main(int argc, char *argv[])
+{
 	uint16_t port = 4721;
-	Address listen_address(0, 0, 0, 0, port);
-	Address broadcast_address(192, 168, 180, 255, port);
+	socket::Address listen_address(0, 0, 0, 0, port);
+	socket::Address broadcast_address(192, 168, 180, 255, port);
+	socket::UDP sock(listen_address);
 
-	Timer timer(10);
-	TachoMotor motor("/sys/class/tacho-motor/motor0");
-	UDPSocket sock(listen_address);
+	const char *source_name = "EV3_1";
+	const char *source_hash = "UAV6nOKM";
 
-	EventLoop()
-	    .register_event(
-	        timer,
-	        [&]() -> bool {
-		        // Mark the timer event as handled
-		        timer.consume_event();
+	Marshaller marshaller(
+	    [&](const uint8_t *buf, size_t buf_size) -> bool {
+		    /*		Message msg{buf, buf_size};*/
+		    write(STDOUT_FILENO, buf, buf_size);
+		    /*		sock.send(broadcast_address, msg);*/
+		    return true;
+	    },
+	    source_name, source_hash);
 
-		        // Broadcast the motor positions
-		        uint8_t buf[1400];
-		        size_t size =
-		            snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
-		                     "{\"src\":\"%s\",\"dev\":\"motor_D\",\"pos\":%d}\n",
-		                     device_id, motor.get_position());
+	marshaller.write_position_sensor("motor_A", 3911);
+	marshaller.write_position_sensor("motor_B", 778);
+	marshaller.flush();
 
-		        Message msg{buf, size};
-		        sock.send(broadcast_address, msg);
-		        return true;
-	        })
-	    .register_event(sock,
-	                    [&]() -> bool {
-		                    Address addr;
-		                    Message msg;
-		                    if (!sock.recv(addr, msg)) {
-		                    	return false; // Socket was closed
-		                    }
-		                    return true;
-	                    })
-	    .run();
+	marshaller.write_position_sensor("motor_C", 3911);
+	marshaller.write_position_sensor("motor_D", 778);
+	marshaller.flush();
+
+	/*	Timer timer(1000);
+	    // TachoMotor motor("/sys/class/tacho-motor/motor0");
+	    //TachoMotor motor("/sys/class/tacho_motor/motor0");
+
+	    EventLoop()
+	        .register_event(
+	            timer,
+	            [&]() -> bool {
+	                // Mark the timer event as handled
+	                timer.consume_event();
+
+	                // Broadcast the motor positions
+	                uint8_t buf[1400];
+	                size_t size = snprintf(
+	                    reinterpret_cast<char *>(buf), sizeof(buf),
+	                    "{\"src\":\"%s\",\"dev\":\"motor_D\",\"pos\":%d}\n",
+	                    device_id, motor.get_position());
+
+	                Message msg{buf, size};
+	                sock.send(broadcast_address, msg);
+	                return true;
+	            })
+	        .register_event(sock,
+	                        [&]() -> bool {
+	                            Address addr;
+	                            Message msg;
+	                            if (!sock.recv(addr, msg)) {
+	                                return false;  // Socket was closed
+	                            }
+	                            return true;
+	                        })
+	        .run();*/
 
 	return 0;
 }
+
+
+
+
+

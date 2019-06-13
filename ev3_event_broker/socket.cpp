@@ -32,20 +32,23 @@
 #include <ev3_event_broker/socket.hpp>
 
 namespace ev3_event_broker {
+namespace socket {
 
 /******************************************************************************
  * Helper functions                                                           *
  ******************************************************************************/
 
-void addr_to_sockaddr(const Address &addr, struct sockaddr_in *sockaddr) {
-	bzero(reinterpret_cast<char*>(sockaddr), sizeof(*sockaddr));
+static void addr_to_sockaddr(const Address &addr, struct sockaddr_in *sockaddr)
+{
+	bzero(reinterpret_cast<char *>(sockaddr), sizeof(*sockaddr));
 	sockaddr->sin_family = AF_INET;
 	sockaddr->sin_addr.s_addr =
 	    htonl((addr.a << 24) | (addr.b << 16) | (addr.c << 8) | (addr.d << 0));
 	sockaddr->sin_port = htons(addr.port);
 }
 
-Address addr_from_sockaddr(const struct sockaddr_in *addr) {
+static Address addr_from_sockaddr(const struct sockaddr_in *addr)
+{
 	uint32_t s_addr = ntohl(addr->sin_addr.s_addr);
 
 	uint8_t a = uint8_t((s_addr >> 24) & 0xFF);
@@ -58,14 +61,15 @@ Address addr_from_sockaddr(const struct sockaddr_in *addr) {
 }
 
 /******************************************************************************
- * UDPSocket Implementation                                                   *
+ * UDP Implementation                                                   *
  ******************************************************************************/
 
-UDPSocket::UDPSocket(Address addr) : m_addr(addr), m_sockfd(-1) {
+UDP::UDP(Address addr) : m_addr(addr), m_sockfd(-1)
+{
 	int optval;
 
 	// Create the socket
-	m_sockfd = err(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+	m_sockfd = err(::socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
 
 	// Mark the socket as reusable
 	optval = 1;
@@ -84,7 +88,8 @@ UDPSocket::UDPSocket(Address addr) : m_addr(addr), m_sockfd(-1) {
 	         sizeof(serveraddr)));
 }
 
-bool UDPSocket::recv(Address &addr, Message &msg) {
+bool UDP::recv(Address &addr, Message &msg)
+{
 	while (true) {
 		struct sockaddr_in clientaddr;
 		socklen_t addrlen = sizeof(clientaddr);
@@ -93,11 +98,14 @@ bool UDPSocket::recv(Address &addr, Message &msg) {
 		    reinterpret_cast<struct sockaddr *>(&clientaddr), &addrlen);
 		if (count == 0) {
 			return false;  // Socket has been shut down
-		} else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+		}
+		else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 			continue;  // Try again
-		} else if (count < 0) {
+		}
+		else if (count < 0) {
 			throw std::system_error(errno, std::system_category());
-		} else {
+		}
+		else {
 			msg = Message(m_buf, count);
 			addr = addr_from_sockaddr(&clientaddr);
 			return true;
@@ -105,7 +113,8 @@ bool UDPSocket::recv(Address &addr, Message &msg) {
 	}
 }
 
-bool UDPSocket::send(const Address &addr, const Message &msg) {
+bool UDP::send(const Address &addr, const Message &msg)
+{
 	while (true) {
 		struct sockaddr_in clientaddr;
 		addr_to_sockaddr(addr, &clientaddr);
@@ -114,20 +123,25 @@ bool UDPSocket::send(const Address &addr, const Message &msg) {
 		                       sizeof(clientaddr));
 		if (count >= 0 && size_t(count) == msg.size()) {
 			return true;
-		} else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+		}
+		else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 			continue;
-		} else if (count < 0) {
+		}
+		else if (count < 0) {
 			throw std::system_error(errno, std::system_category());
-		} else {
+		}
+		else {
 			return false;
 		}
 	}
 }
 
-UDPSocket::~UDPSocket() {
+UDP::~UDP()
+{
 	if (m_sockfd >= 0) {
 		close(m_sockfd);
 	}
 }
 
-}
+}  // namespace socket
+}  // namespace ev3_event_broker

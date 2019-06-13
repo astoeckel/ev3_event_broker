@@ -22,7 +22,7 @@
 #include <cstdint>
 
 namespace ev3_event_broker {
-
+namespace socket {
 class Message {
 private:
 	const uint8_t *m_buf;
@@ -49,10 +49,12 @@ struct Address {
 	Address(uint16_t port) : a(0), b(0), c(0), d(0), port(port) {}
 
 	Address(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port = 0)
-	    : a(a), b(b), c(c), d(d), port(port) {}
+	    : a(a), b(b), c(c), d(d), port(port)
+	{
+	}
 };
 
-class UDPSocket {
+class UDP {
 private:
 	static constexpr size_t BUF_SIZE = 4096;
 
@@ -61,8 +63,8 @@ private:
 	uint8_t m_buf[BUF_SIZE];
 
 public:
-	UDPSocket(Address addr);
-	~UDPSocket();
+	UDP(Address addr);
+	~UDP();
 
 	bool recv(Address &addr, Message &msg);
 
@@ -70,5 +72,5 @@ public:
 
 	int fd() const { return m_sockfd; }
 };
-
+}  // namespace socket
 }  // namespace ev3_event_broker
