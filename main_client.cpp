@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 
 	uint16_t port = 4721;
 	socket::Address listen_address(0, 0, 0, 0, port);
-	socket::Address target_address(192, 168, 178, 100, port);
+	socket::Address target_address(192, 168, 178, 125, port);
 	socket::UDP sock(listen_address);
 
 	SourceId source_id("nengo");
@@ -83,20 +83,22 @@ int main(int argc, char *argv[]) {
 		                    return true;
 	                    };
 
-	Timer timer(10);
+	Timer timer(100);
 	int dir = 1;
 	int duty_cycle = 0;
 	auto handle_timer = [&]() -> bool {
 		timer.consume_event();
 
 		duty_cycle += dir;
-		if (duty_cycle >= 100 || duty_cycle <= -100) {
+/*		if (duty_cycle >= 100 || duty_cycle <= -100) {
 			//dir *= -1;
 			marshaller.write_reset();
 		} else {
 			marshaller.write_set_duty_cycle("motor_outA", duty_cycle);
 			marshaller.write_set_duty_cycle("motor_outB", -duty_cycle);
-		}
+		}*/
+		marshaller.write_reset();
+//		marshaller.write_set_duty_cycle("motor_outB", -duty_cycle);
 		marshaller.flush();
 		return true;
 	};

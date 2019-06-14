@@ -31,7 +31,7 @@ static constexpr size_t N_SOURCE_NAME_CHARS = 8;
 static constexpr size_t N_SOURCE_HASH_CHARS = 8;
 static constexpr size_t N_DEVICE_NAME_CHARS = 16;
 static constexpr size_t HEADER_SIZE =
-    4 + N_SOURCE_NAME_CHARS + N_SOURCE_HASH_CHARS + 4 + 1;
+    N_SOURCE_NAME_CHARS + N_SOURCE_HASH_CHARS + 4;
 static constexpr size_t POSITION_SENSOR_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;
 static constexpr size_t SET_DUTY_CYCLE_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;
 static constexpr size_t RESET_SIZE = 1;
@@ -62,8 +62,10 @@ public:
 
 	Marshaller &flush();
 
-	Marshaller &write_position_sensor(const char *device_name, int32_t position);
-	Marshaller &write_set_duty_cycle(const char *device_name, int32_t duty_cycle);
+	Marshaller &write_position_sensor(const char *device_name,
+	                                  int32_t position);
+	Marshaller &write_set_duty_cycle(const char *device_name,
+	                                 int32_t duty_cycle);
 	Marshaller &write_reset();
 };
 
@@ -96,9 +98,9 @@ public:
 		virtual void on_position_sensor(const Header &,
 		                                const PositionSensor &){};
 
-		virtual void on_set_duty_cycle(const Header &, const SetDutyCycle &) {};
+		virtual void on_set_duty_cycle(const Header &, const SetDutyCycle &){};
 
-		virtual void on_reset(const Header &) {};
+		virtual void on_reset(const Header &){};
 	};
 
 private:

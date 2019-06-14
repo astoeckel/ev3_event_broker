@@ -74,16 +74,16 @@ static inline const uint8_t *read_int(T *value, uint8_t const *src) {
 
 Marshaller::Marshaller(const Marshaller::Callback &cback,
                        const char *source_name, const char *source_hash)
-    : m_cback(cback), m_good(true) {
-	// Write the header to the internal buffer, remember the location of the
-	// message count
+    : m_cback(cback), m_sequence(0), m_message_count(0), m_good(true) {
+	// Write the header to the internal buffer
 	uint8_t *tar = m_buf;
 	tar = write_int<uint32_t>(SYNC, tar);
 	tar = write_fixed_size_string(source_name, tar, N_SOURCE_NAME_CHARS);
 	tar = write_fixed_size_string(source_hash, tar, N_SOURCE_HASH_CHARS);
 
 	m_sequence_offs = tar - m_buf;
-	tar += sizeof(m_sequence) + sizeof(m_message_count);
+	tar = write_int<uint32_t>(0, tar);
+	tar = write_int<uint8_t>(0, tar);
 
 	m_header_offs = tar - m_buf;
 	m_buf_ptr = m_header_offs;
@@ -142,6 +142,11 @@ Marshaller &Marshaller::write_reset() {
 
 	uint8_t *tar = m_buf + m_buf_ptr;
 	tar = write_int<uint8_t>(TYPE_RESET, tar);
+	tar = write_int<uint8_t>(TYPE_RESET, tar);
+	tar = write_int<uint8_t>(TYPE_RESET, tar);
+	tar = write_int<uint8_t>(TYPE_RESET, tar);
+	tar = write_int<uint8_t>(TYPE_RESET, tar);
+	tar = write_int<uint8_t>(TYPE_RESET, tar);
 	return finalize_msg(tar);
 }
 
@@ -166,13 +171,14 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 			continue;
 		}
 		// Read the message header
+		printf("Reset");
 		if (size_t(src_end - src) < HEADER_SIZE) {
 			return;
 		}
 		src = read_fixed_size_string(m_header.source_name, src,
 		                             N_SOURCE_NAME_CHARS);
 		src = read_fixed_size_string(m_header.source_hash, src,
-		                             N_SOURCE_NAME_CHARS);
+		                             N_SOURCE_HASH_CHARS);
 		src = read_int<uint32_t>(&m_header.sequence, src);
 		src = read_int<uint8_t>(&m_header.n_messages, src);
 		if (!listener.filter(m_header)) {
@@ -186,7 +192,6 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 				return;
 			}
 			src = read_int<uint8_t>(&m_type, src);
-			printf("type=%02X\n", m_type);
 
 			// Parse the individual messages
 			switch (m_type) {
