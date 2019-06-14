@@ -56,7 +56,7 @@ void Motors::rescan() {
 	if (d) {
 		while ((dir = readdir(d)) != nullptr) {
 			// For each file, try to create a motor instance. If this succeeds,
-			// get the motor name and add it to the motor map
+			// get the motor name and add it to the list of motors
 			try {
 				// Create the absolute motor path
 				snprintf(buf + motor_root_dir_len,
