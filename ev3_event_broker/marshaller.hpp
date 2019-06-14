@@ -38,6 +38,11 @@ static constexpr uint8_t TYPE_POSITION_SENSOR = 0x01;
 static constexpr uint8_t TYPE_SET_DUTY_CYCLE = 0x02;
 
 /**
+ * Message indicating that a device is alive.
+ */
+static constexpr uint8_t TYPE_HEARTBEAT = 0x03;
+
+/**
  * Message demanding the reset of all devices.
  */
 static constexpr uint8_t TYPE_RESET = 0xFF;
@@ -68,6 +73,7 @@ static constexpr size_t HEADER_SIZE =
 static constexpr size_t POSITION_SENSOR_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;
 static constexpr size_t SET_DUTY_CYCLE_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;
 static constexpr size_t RESET_SIZE = 1;
+static constexpr size_t HEARTBEAT_SIZE = 1;
 
 class Marshaller {
 public:
@@ -85,6 +91,7 @@ private:
 
 	void flush_if_no_space(size_t size_required);
 
+	uint8_t *initialze_msg(size_t size_required);
 	Marshaller &finalize_msg(uint8_t *tar);
 
 public:
@@ -99,6 +106,7 @@ public:
 	                                  int32_t position);
 	Marshaller &write_set_duty_cycle(const char *device_name,
 	                                 int32_t duty_cycle);
+	Marshaller &write_heartbeat();
 	Marshaller &write_reset();
 };
 
@@ -132,6 +140,8 @@ public:
 		                                const PositionSensor &){};
 
 		virtual void on_set_duty_cycle(const Header &, const SetDutyCycle &){};
+
+		virtual void on_heartbeat(const Header &) {};
 
 		virtual void on_reset(const Header &){};
 	};

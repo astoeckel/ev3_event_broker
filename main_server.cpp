@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
 	socket::Address listen_address(0, 0, 0, 0, port);
 	socket::Address broadcast_address(255, 255, 255, 255, port);
 	socket::UDP sock(listen_address);
-	printf("Listening on %d.%d.%d.%d:%d as \"%s\"...\n", listen_address.a,
+	fprintf(stderr, "Listening on %d.%d.%d.%d:%d as \"%s\"...\n", listen_address.a,
 	       listen_address.b, listen_address.c, listen_address.d, port,
 	       device_name.c_str());
 
@@ -123,10 +123,19 @@ int main(int argc, char *argv[]) {
 	};
 
 	// Rescan available motors from time to time
-	Timer rescan_timer(1000);  // interval: 5s
+	Timer rescan_timer(1000);
 	auto handle_rescan_timer = [&]() -> bool {
 		rescan_timer.consume_event();
 		motors.rescan();
+		return true;
+	};
+
+	// Timer sending a regular heartbeat
+	Timer heartbeat_timer(1000);
+	auto handle_hearbeat_timer = [&]() -> bool {
+		heartbeat_timer.consume_event();
+		marshaller.write_heartbeat();
+		marshaller.flush();
 		return true;
 	};
 
@@ -145,6 +154,7 @@ int main(int argc, char *argv[]) {
 	EventLoop()
 	    .register_event(position_timer, handle_position_timer)
 	    .register_event(rescan_timer, handle_rescan_timer)
+	    .register_event(heartbeat_timer, handle_hearbeat_timer)
 	    .register_event(sock, handle_sock)
 	    .run();
 

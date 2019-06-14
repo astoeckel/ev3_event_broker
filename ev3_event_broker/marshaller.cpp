@@ -109,6 +109,11 @@ Marshaller &Marshaller::flush() {
 	return *this;
 }
 
+uint8_t *Marshaller::initialze_msg(size_t size_required) {
+	flush_if_no_space(size_required);
+	return m_buf + m_buf_ptr;
+}
+
 Marshaller &Marshaller::finalize_msg(uint8_t *tar) {
 	m_buf_ptr = tar - m_buf;
 	m_message_count++;
@@ -117,9 +122,7 @@ Marshaller &Marshaller::finalize_msg(uint8_t *tar) {
 
 Marshaller &Marshaller::write_position_sensor(const char *device_name,
                                               int32_t position) {
-	flush_if_no_space(POSITION_SENSOR_SIZE);
-
-	uint8_t *tar = m_buf + m_buf_ptr;
+	uint8_t *tar = initialze_msg(POSITION_SENSOR_SIZE);
 	tar = write_int<uint8_t>(TYPE_POSITION_SENSOR, tar);
 	tar = write_fixed_size_string(device_name, tar, N_DEVICE_NAME_CHARS);
 	tar = write_int<int32_t>(position, tar);
@@ -128,9 +131,7 @@ Marshaller &Marshaller::write_position_sensor(const char *device_name,
 
 Marshaller &Marshaller::write_set_duty_cycle(const char *device_name,
                                              int32_t duty_cycle) {
-	flush_if_no_space(SET_DUTY_CYCLE_SIZE);
-
-	uint8_t *tar = m_buf + m_buf_ptr;
+	uint8_t *tar = initialze_msg(SET_DUTY_CYCLE_SIZE);
 	tar = write_int<uint8_t>(TYPE_SET_DUTY_CYCLE, tar);
 	tar = write_fixed_size_string(device_name, tar, N_DEVICE_NAME_CHARS);
 	tar = write_int<int32_t>(duty_cycle, tar);
@@ -138,10 +139,14 @@ Marshaller &Marshaller::write_set_duty_cycle(const char *device_name,
 }
 
 Marshaller &Marshaller::write_reset() {
-	flush_if_no_space(RESET_SIZE);
-
-	uint8_t *tar = m_buf + m_buf_ptr;
+	uint8_t *tar = initialze_msg(RESET_SIZE);
 	tar = write_int<uint8_t>(TYPE_RESET, tar);
+	return finalize_msg(tar);
+}
+
+Marshaller &Marshaller::write_heartbeat() {
+	uint8_t *tar = initialze_msg(HEARTBEAT_SIZE);
+	tar = write_int<uint8_t>(TYPE_HEARTBEAT, tar);
 	return finalize_msg(tar);
 }
 
@@ -208,6 +213,12 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 					                             src, N_DEVICE_NAME_CHARS);
 					src = read_int<int32_t>(&m_set_duty_cycle.duty_cycle, src);
 					listener.on_set_duty_cycle(m_header, m_set_duty_cycle);
+					break;
+				case TYPE_HEARTBEAT:
+					if (src + HEARTBEAT_SIZE - 1 > src_end) {
+						return;
+					}
+					listener.on_heartbeat(m_header);
 					break;
 				case TYPE_RESET:
 					if (src + RESET_SIZE - 1 > src_end) {
