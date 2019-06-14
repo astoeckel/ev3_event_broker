@@ -22,14 +22,47 @@
 
 namespace ev3_event_broker {
 
+/**
+ * Synchronisation word used to track the beginning of a message.
+ */
 static constexpr uint32_t SYNC = 0xCAA29C3AU;
+
+/**
+ * Message indicating the position of a motor.
+ */
 static constexpr uint8_t TYPE_POSITION_SENSOR = 0x01;
+
+/**
+ * Message indicating the desired motor duty cycle.
+ */
 static constexpr uint8_t TYPE_SET_DUTY_CYCLE = 0x02;
+
+/**
+ * Message demanding the reset of all devices.
+ */
 static constexpr uint8_t TYPE_RESET = 0xFF;
+
+/**
+ * Maximum buffer size used by the marshaller. This should be approximately
+ * equivalent to the MTU (preferrably smaller).
+ */
 static constexpr size_t MARSHALLER_BUF_SIZE = 1280;
+
+/**
+ * Number of characters in the source name.
+ */
 static constexpr size_t N_SOURCE_NAME_CHARS = 8;
+
+/**
+ * Number of charachters in the random source identifier.
+ */
 static constexpr size_t N_SOURCE_HASH_CHARS = 8;
+
+/**
+ * Number of characters used to identify devices.
+ */
 static constexpr size_t N_DEVICE_NAME_CHARS = 16;
+
 static constexpr size_t HEADER_SIZE =
     N_SOURCE_NAME_CHARS + N_SOURCE_HASH_CHARS + 4;
 static constexpr size_t POSITION_SENSOR_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;

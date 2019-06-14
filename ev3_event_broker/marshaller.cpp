@@ -142,11 +142,6 @@ Marshaller &Marshaller::write_reset() {
 
 	uint8_t *tar = m_buf + m_buf_ptr;
 	tar = write_int<uint8_t>(TYPE_RESET, tar);
-	tar = write_int<uint8_t>(TYPE_RESET, tar);
-	tar = write_int<uint8_t>(TYPE_RESET, tar);
-	tar = write_int<uint8_t>(TYPE_RESET, tar);
-	tar = write_int<uint8_t>(TYPE_RESET, tar);
-	tar = write_int<uint8_t>(TYPE_RESET, tar);
 	return finalize_msg(tar);
 }
 
@@ -170,8 +165,8 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 			m_sync = (m_sync << 8) | (*src++);
 			continue;
 		}
+
 		// Read the message header
-		printf("Reset");
 		if (size_t(src_end - src) < HEADER_SIZE) {
 			return;
 		}

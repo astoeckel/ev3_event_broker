@@ -1,5 +1,7 @@
 a.out
+ev3_broker
 ev3_broker_client
 ev3_broker_server
 motor
 vgcore.*
+.gdb_history

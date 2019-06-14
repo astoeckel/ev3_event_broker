@@ -18,48 +18,77 @@
 
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <random>
 
+#include <fcntl.h>
 #include <unistd.h>
 
+#include <json.hpp>
+
+#include <ev3_event_broker/error.hpp>
 #include <ev3_event_broker/event_loop.hpp>
 #include <ev3_event_broker/marshaller.hpp>
 #include <ev3_event_broker/socket.hpp>
 #include <ev3_event_broker/source_id.hpp>
 #include <ev3_event_broker/timer.hpp>
 
+using namespace nlohmann;
 using namespace ev3_event_broker;
 
-struct Listener : public Demarshaller::Listener {
-	socket::Address ip;
+class Listener : public Demarshaller::Listener {
+private:
+	SourceId &m_source_id;
+	socket::Address &m_source_address;
 
+public:
+	Listener(SourceId &source_id, socket::Address &source_address)
+	    : m_source_id(source_id), m_source_address(source_address)
+	{
+	}
+
+	/**
+	 * Implementation of the filter() function. Discards messages originating
+	 * from this device.
+	 */
+	bool filter(const Demarshaller::Header &header) override
+	{
+		return (strcmp(header.source_name, m_source_id.name()) != 0) ||
+		       (strcmp(header.source_hash, m_source_id.hash()) != 0);
+	}
+
+	/**
+	 * Dump incoming position events as JSON to stdout.
+	 */
 	void on_position_sensor(
 	    const Demarshaller::Header &header,
-	    const Demarshaller::PositionSensor &position) override {
-		printf(
-		    "{"
-		    "\"source\":\"%.*s:%.*s\","
-		    "\"ip\":\"%d.%d.%d.%d\","
-		    "\"port\":%d,"
-		    "\"seq\":%d,"
-		    "\"type\":\"position\","
-		    "\"sensor\":\"%.*s\","
-		    "\"position\":%d"
-		    "}\n",
-		    int(sizeof(header.source_name)), header.source_name,
-		    int(sizeof(header.source_hash)), header.source_hash, ip.a, ip.b,
-		    ip.c, ip.d, ip.port, header.sequence,
-		    int(sizeof(position.device_name)), position.device_name,
-		    position.position);
+	    const Demarshaller::PositionSensor &position) override
+	{
+		const auto &ip = m_source_address;
+		std::cout << json({{"source_name", header.source_name},
+		                   {"source_hash", header.source_hash},
+		                   {"ip", {ip.a, ip.b, ip.c, ip.d}},
+		                   {"port", ip.port},
+		                   {"seq", header.sequence},
+		                   {"type", "position"},
+		                   {"device", position.device_name},
+		                   {"position", position.position}})
+		          << std::endl;
 	}
 };
 
-int main(int argc, char *argv[]) {
-	Listener listener;
+static void make_nonblock(int fd)
+{
+	int flags = err(fcntl(fd, F_GETFL));
+	err(fcntl(fd, F_SETFL, flags | O_NONBLOCK));
+}
 
+int main(int argc, char *argv[])
+{
 	uint16_t port = 4721;
-	socket::Address listen_address(0, 0, 0, 0, port);
-	socket::Address target_address(192, 168, 178, 125, port);
+	socket::Address source_address(0, 0, 0, 0, 0);
+	socket::Address listen_address(127, 0, 0, 2, port);
+	socket::Address target_address(127, 0, 0, 1, port);
 	socket::UDP sock(listen_address);
 
 	SourceId source_id("nengo");
@@ -71,41 +100,66 @@ int main(int argc, char *argv[]) {
 	    },
 	    source_id.name(), source_id.hash());
 
+	Demarshaller demarshaller;
+	Listener listener(source_id, source_address);
+
 	auto handle_sock = [&]() -> bool {
-		                    socket::Address addr;
-		                    socket::Message msg;
-		                    if (!sock.recv(addr, msg)) {
-			                    return false;
-		                    }
-		                    listener.ip = addr;
-		                    Demarshaller().parse(listener, msg.buf(),
-		                                         msg.size());
-		                    return true;
-	                    };
+		socket::Message msg;
+		if (!sock.recv(source_address, msg)) {
+			return false;
+		}
+		demarshaller.parse(listener, msg.buf(), msg.size());
+		return true;
+	};
 
-	Timer timer(100);
-	int dir = 1;
-	int duty_cycle = 0;
-	auto handle_timer = [&]() -> bool {
-		timer.consume_event();
+	size_t line_buf_size = 1024;
+	char *line_buf = static_cast<char *>(malloc(line_buf_size));
+	make_nonblock(STDIN_FILENO);
+	auto handle_stdin = [&]() -> bool {
+		try {
+			// Read a new line from standard in
+			ssize_t ret = getline(&line_buf, &line_buf_size, stdin);
+			if (ret < 0 &&
+			    (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+				return true;
+			}
+			else if (ret < 0) {
+				return false;
+			}
 
-		duty_cycle += dir;
-/*		if (duty_cycle >= 100 || duty_cycle <= -100) {
-			//dir *= -1;
-			marshaller.write_reset();
-		} else {
-			marshaller.write_set_duty_cycle("motor_outA", duty_cycle);
-			marshaller.write_set_duty_cycle("motor_outB", -duty_cycle);
-		}*/
-		marshaller.write_reset();
-//		marshaller.write_set_duty_cycle("motor_outB", -duty_cycle);
+			// Try to parse the line as JSON
+			json msg = json::parse(line_buf);
+
+			// Parse the target address and port
+			target_address.a = msg["ip"][0].get<int>();
+			target_address.b = msg["ip"][1].get<int>();
+			target_address.c = msg["ip"][2].get<int>();
+			target_address.d = msg["ip"][3].get<int>();
+			target_address.port = msg["port"].get<int>();
+
+			// Read message-type dependent information and send the
+			// corresponding message
+			const std::string type = msg["type"].get<std::string>();
+			if (type == "set_duty_cycle") {
+				std::string device = msg["device"].get<std::string>();
+				int duty_cycle = msg["duty_cycle"].get<int>();
+				marshaller.write_set_duty_cycle(device.c_str(), duty_cycle);
+			}
+			else if (type == "reset") {
+				marshaller.write_reset();
+			}
+		}
+		catch (json::exception &e) {
+			std::cout << json({{"type", "error"}, {"what", e.what()}})
+			          << std::endl;
+		}
 		marshaller.flush();
 		return true;
 	};
 
 	EventLoop()
 	    .register_event(sock, handle_sock)
-	    .register_event(timer, handle_timer)
+	    .register_event_fd(STDIN_FILENO, handle_stdin)
 	    .run();
 
 	return 0;
