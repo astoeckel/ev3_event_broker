@@ -20,6 +20,8 @@
 #include <cstring>
 #include <system_error>
 
+#include <CLI/CLI.hpp>
+
 #include <ev3_event_broker/event_loop.hpp>
 #include <ev3_event_broker/marshaller.hpp>
 #include <ev3_event_broker/motors.hpp>
@@ -64,18 +66,30 @@ public:
 };
 
 int main(int argc, char *argv[]) {
-	// Create the UDP socket and setup all addresses
+	// Default port to listen on
 	uint16_t port = 4721;
+	std::string device_name = "EV3";
+
+	CLI::App app{"EV3 Event Broker Server"};
+	app.add_option("-p,--port", port, "The UDP port to listen on");
+	app.add_option("-n,--name", device_name, "Name of this device");
+
+	CLI11_PARSE(app, argc, argv);
+
+	// Create the UDP socket and setup all addresses
 	socket::Address listen_address(0, 0, 0, 0, port);
 	socket::Address broadcast_address(255, 255, 255, 255, port);
 	socket::UDP sock(listen_address);
+	printf("Listening on %d.%d.%d.%d:%d as \"%s\"...\n", listen_address.a,
+	       listen_address.b, listen_address.c, listen_address.d, port,
+	       device_name.c_str());
 
 	// Fetch all motors
 	Motors motors;
 
 	// Create a marshaller instance with a randomized source_id and connect it
 	// to the socket
-	SourceId source_id("EV3");
+	SourceId source_id(device_name.c_str());
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
 		    socket::Message msg(buf, buf_size);

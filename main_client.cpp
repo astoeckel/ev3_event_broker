@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include <json.hpp>
+#include <CLI/CLI.hpp>
 
 #include <ev3_event_broker/error.hpp>
 #include <ev3_event_broker/event_loop.hpp>
@@ -85,13 +86,25 @@ static void make_nonblock(int fd)
 
 int main(int argc, char *argv[])
 {
+	// Default port to listen on
 	uint16_t port = 4721;
-	socket::Address source_address(0, 0, 0, 0, 0);
-	socket::Address listen_address(127, 0, 0, 2, port);
-	socket::Address target_address(127, 0, 0, 1, port);
-	socket::UDP sock(listen_address);
+	std::string device_name = "nengo";
 
-	SourceId source_id("nengo");
+	CLI::App app{"EV3 Event Broker Client"};
+	app.add_option("-p,--port", port, "The UDP port to listen on");
+	app.add_option("-n,--name", device_name, "Name of this device");
+
+	CLI11_PARSE(app, argc, argv);
+
+	socket::Address source_address(0, 0, 0, 0, 0);
+	socket::Address listen_address(0, 0, 0, 0, port);
+	socket::Address target_address(0, 0, 0, 0, port);
+	socket::UDP sock(listen_address);
+	printf("Listening on %d.%d.%d.%d:%d as \"%s\"...\n", listen_address.a,
+	       listen_address.b, listen_address.c, listen_address.d, port,
+	       device_name.c_str());
+
+	SourceId source_id(device_name.c_str());
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
 		    socket::Message msg(buf, buf_size);

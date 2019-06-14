@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 CXX ?= g++
-FLAGS = -Wno-psabi -Wall -Wextra -s -O0 -I. -Ijson/src
+FLAGS = -Wno-psabi -Wall -Wextra -s -O0 -I. -Ilib/json/src -Ilib/CLI11/include
 
 all: ev3_broker_server ev3_broker_client
 

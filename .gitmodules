@@ -1,3 +1,6 @@
-[submodule "json"]
-	path = json
+[submodule "lib/json"]
+	path = lib/json
 	url = https://github.com/astoeckel/json
+[submodule "lib/CLI11"]
+	path = lib/CLI11
+	url = https://github.com/CLIUtils/CLI11
