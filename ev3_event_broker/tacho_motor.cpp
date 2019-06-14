@@ -46,6 +46,7 @@ TachoMotor &TachoMotor::operator=(TachoMotor &&other) {
 	m_fd_position = other.m_fd_position;
 	m_fd_duty_cycle = other.m_fd_duty_cycle;
 	m_fd_state = other.m_fd_state;
+	strncpy(m_name, other.m_name, sizeof(m_name));
 
 	other.m_fd_command = -1;
 	other.m_fd_position = -1;
