@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <map>
+#include <vector>
 #include <string>
 
 #include <ev3_event_broker/tacho_motor.hpp>
@@ -26,12 +26,15 @@
 namespace ev3_event_broker {
 class Motors {
 private:
-	std::map<std::string, TachoMotor> m_motors;
+	std::vector<TachoMotor> m_motors;
 public:
 	Motors();
 
 	void rescan();
 
-	const std::map<std::string, TachoMotor> &motors() const { return m_motors; }
+	const std::vector<TachoMotor> &motors() const { return m_motors; }
+	std::vector<TachoMotor> &motors() { return m_motors; }
+
+	TachoMotor *find(const char *name);
 };
 }

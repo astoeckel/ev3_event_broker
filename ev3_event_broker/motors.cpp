@@ -16,6 +16,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cstring>
 
 #include <dirent.h>
@@ -26,22 +27,27 @@
 namespace ev3_event_broker {
 Motors::Motors() { rescan(); }
 
+TachoMotor* Motors::find(const char *name) {
+	for (TachoMotor &motor: m_motors) {
+		if (strcmp(motor.name(), name) == 0) {
+			return &motor;
+		}
+	}
+	return nullptr;
+}
+
 void Motors::rescan() {
 	const char motor_root_dir[] = "/sys/class/tacho-motor";
 	const size_t motor_root_dir_len = sizeof(motor_root_dir) - 1;
 	char buf[1024];
-	char name_buf[1024];
 	strncpy(buf, motor_root_dir, sizeof(buf));
 
-	// Remove all motors from the list that no longer can be probed
-	for (auto it = m_motors.begin(); it != m_motors.end();) {
-		try {
-			it->second.name(name_buf, sizeof(name_buf));
-			it++;
-		} catch (std::system_error &) {
-			it = m_motors.erase(it);
-		}
-	}
+	// Remove all motors from the list that no longer can be probed (are no
+	// longer good)
+	m_motors.erase(
+	    std::remove_if(m_motors.begin(), m_motors.end(),
+	                   [](const TachoMotor &motor) { return !motor.good(); }),
+	    m_motors.end());
 
 	// Iterate over the motor root directory
 	DIR *d;
@@ -58,16 +64,9 @@ void Motors::rescan() {
 
 				// Create the motor instance
 				TachoMotor motor(buf);
-
-				// Fetch the motor instance path. In case it already exists in
-				// the map, do nothing. Otherwise reset the motor and add it
-				// to the mao
-				size_t name_len = motor.name(name_buf, sizeof(name_buf));
-				std::string name(name_buf, name_len);
-				if (m_motors.find(name) == m_motors.end()) {
+				if (!find(motor.name())) {
 					motor.reset();
-					m_motors.emplace(
-						std::string(name_buf, name_len), std::move(motor));
+					m_motors.emplace_back(std::move(motor));
 				}
 			} catch (std::system_error &) {
 				// Ignore failures at this point

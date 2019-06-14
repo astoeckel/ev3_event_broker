@@ -16,6 +16,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstring>
 #include <type_traits>
 
 #include <ev3_event_broker/marshaller.hpp>
@@ -151,7 +152,11 @@ Marshaller &Marshaller::write_reset() {
  * Class Demarshaller                                                         *
  ******************************************************************************/
 
-Demarshaller::Demarshaller() : m_sync(0) {}
+Demarshaller::Demarshaller() : m_sync(0), m_type(0) {
+	memset(&m_header, 0, sizeof(m_header));
+	memset(&m_position_sensor, 0, sizeof(m_position_sensor));
+	memset(&m_set_duty_cycle, 0, sizeof(m_set_duty_cycle));
+}
 
 void Demarshaller::parse(Listener &listener, const uint8_t *buf,
                          size_t buf_size) {

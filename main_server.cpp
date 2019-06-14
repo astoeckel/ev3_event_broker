@@ -29,6 +29,40 @@
 
 using namespace ev3_event_broker;
 
+class Listener : public Demarshaller::Listener {
+private:
+	SourceId &m_source_id;
+	Motors &m_motors;
+
+public:
+	Listener(SourceId &source_id, Motors &motors)
+	    : m_source_id(m_source_id), m_motors(motors) {}
+
+	/**
+	 * Implementation of the filter() function. Discards messages originating
+	 * from this device.
+	 */
+	bool filter(const Demarshaller::Header &header) override {
+		return (strcmp(header.source_name, m_source_id.name()) != 0) ||
+		       (strcmp(header.source_hash, m_source_id.hash()) != 0);
+	}
+
+	void on_set_duty_cycle(
+	    const Demarshaller::Header &,
+	    const Demarshaller::SetDutyCycle &set_duty_cycle) override {
+		TachoMotor *motor = m_motors.find(set_duty_cycle.device_name);
+		if (motor) {
+			motor->set_duty_cycle(set_duty_cycle.duty_cycle);
+		}
+	}
+
+	void on_reset(const Demarshaller::Header &) override {
+		for (TachoMotor &motor : m_motors.motors()) {
+			motor.reset();
+		}
+	}
+};
+
 int main(int argc, char *argv[]) {
 	// Create the UDP socket and setup all addresses
 	uint16_t port = 4721;
@@ -38,18 +72,10 @@ int main(int argc, char *argv[]) {
 
 	// Fetch all motors
 	Motors motors;
-	if (motors.motors().size() > 0) {
-		printf("Found %ld motors\n", motors.motors().size());
-		for (const auto &item : motors.motors()) {
-			printf("\t%s\n", item.first.c_str());
-		}
-	} else {
-		printf("Warning: no attached motors found\n");
-	}
 
 	// Create a marshaller instance with a randomized source_id and connect it
 	// to the socket
-	SourceId source_id("ev3");
+	SourceId source_id("EV3");
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
 		    socket::Message msg(buf, buf_size);
@@ -57,6 +83,10 @@ int main(int argc, char *argv[]) {
 		    return true;
 	    },
 	    source_id.name(), source_id.hash());
+
+	// Setup the demarshaller for incoming messages
+	Listener listener(source_id, motors);
+	Demarshaller demarshaller;
 
 	// Repeatedly send the position of all connected motors
 	Timer position_timer(10);  // interval: 10ms
@@ -66,9 +96,9 @@ int main(int argc, char *argv[]) {
 
 		// Send the motor position
 		try {
-			for (const auto &item : motors.motors()) {
-				marshaller.write_position_sensor(item.first.c_str(),
-					                             item.second.get_position());
+			for (const auto &motor : motors.motors()) {
+				marshaller.write_position_sensor(motor.name(),
+				                                 motor.get_position());
 			}
 			marshaller.flush();
 		} catch (std::system_error &e) {
@@ -79,7 +109,7 @@ int main(int argc, char *argv[]) {
 	};
 
 	// Rescan available motors from time to time
-	Timer rescan_timer(1000); // interval: 5s
+	Timer rescan_timer(1000);  // interval: 5s
 	auto handle_rescan_timer = [&]() -> bool {
 		rescan_timer.consume_event();
 		motors.rescan();
@@ -93,6 +123,7 @@ int main(int argc, char *argv[]) {
 		if (!sock.recv(addr, msg)) {
 			return false;  // Socket was closed
 		}
+		demarshaller.parse(listener, msg.buf(), msg.size());
 		return true;
 	};
 

@@ -31,28 +31,45 @@ TachoMotor::TachoMotor(const char *path)
     : m_fd_command(-1),
       m_fd_position(-1),
       m_fd_duty_cycle(-1),
-      m_fd_address(-1) {
+      m_fd_state(-1) {
 	m_fd_command = open_device_file(path, "/command", O_WRONLY);
 	m_fd_position = open_device_file(path, "/position", O_RDONLY);
 	m_fd_duty_cycle = open_device_file(path, "/duty_cycle_sp", O_WRONLY);
-	m_fd_address = open_device_file(path, "/address", O_RDONLY);
+	m_fd_state = open_device_file(path, "/state", O_RDONLY);
+	read_name(path);
 }
 
-TachoMotor::TachoMotor(TachoMotor &&other) {
+TachoMotor::TachoMotor(TachoMotor &&other) { *this = std::move(other); }
+
+TachoMotor &TachoMotor::operator=(TachoMotor &&other) {
 	m_fd_command = other.m_fd_command;
 	m_fd_position = other.m_fd_position;
 	m_fd_duty_cycle = other.m_fd_duty_cycle;
-	m_fd_address = other.m_fd_address;
+	m_fd_state = other.m_fd_state;
 
 	other.m_fd_command = -1;
 	other.m_fd_position = -1;
 	other.m_fd_duty_cycle = -1;
-	other.m_fd_address = -1;
+	other.m_fd_state = -1;
+
+	return *this;
+}
+
+void TachoMotor::read_name(const char *path) {
+	// Read the address
+	char buf[32];
+	int fd = open_device_file(path, "/address", O_RDONLY);
+	ssize_t len = err(pread(fd, buf, sizeof(buf), 0));
+	close(fd);
+
+	// Combine the address with the "motor_" prefix
+	len = snprintf(m_name, sizeof(m_name) - 1, "motor_%.*s", int(len - 1), buf);
+	m_name[len] = 0;  // Force the last byte to zero
 }
 
 TachoMotor::~TachoMotor() {
-	if (m_fd_address >= 0) {
-		close(m_fd_address);
+	if (m_fd_state >= 0) {
+		close(m_fd_state);
 	}
 	if (m_fd_duty_cycle >= 0) {
 		close(m_fd_duty_cycle);
@@ -63,6 +80,11 @@ TachoMotor::~TachoMotor() {
 	if (m_fd_command >= 0) {
 		close(m_fd_command);
 	}
+}
+
+bool TachoMotor::good() const {
+	char buf[32];
+	return pread(m_fd_state, buf, sizeof(buf), 0) > 0;
 }
 
 void TachoMotor::reset() {
@@ -94,11 +116,4 @@ void TachoMotor::set_duty_cycle(int duty_cycle) {
 	snprintf(buf, sizeof(buf), "%d\n", duty_cycle);
 	err(pwrite(m_fd_duty_cycle, buf, strnlen(buf, sizeof(buf)), 0));
 }
-
-size_t TachoMotor::name(char *buf, size_t buf_len) const {
-	char buf_addr[16];
-	ssize_t len = err(pread(m_fd_address, buf_addr, sizeof(buf_addr), 0));
-	return snprintf(buf, buf_len, "motor_%.*s", int(len - 1), buf_addr);
-}
-
 }  // namespace ev3_event_broker

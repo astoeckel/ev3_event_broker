@@ -24,18 +24,28 @@ private:
 	int m_fd_command;
 	int m_fd_position;
 	int m_fd_duty_cycle;
-	int m_fd_address;
+	int m_fd_state;
+	char m_name[17];
+
+	void read_name(const char *path);
 
 public:
-	explicit TachoMotor(const char* path);
+	explicit TachoMotor(const char *path);
 	TachoMotor(const TachoMotor &) = delete;
+	TachoMotor &operator=(const TachoMotor &) = delete;
+
 	TachoMotor(TachoMotor &&other);
+	TachoMotor &operator=(TachoMotor &&);
 
 	~TachoMotor();
 
 	void reset();
+
+	bool good() const;
+
 	int get_position() const;
 	void set_duty_cycle(int duty_cycle);
-	size_t name(char *buf, size_t buf_len) const;
+
+	const char *name() const { return m_name; }
 };
 }  // namespace ev3_event_broker

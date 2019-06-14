@@ -70,19 +70,19 @@ public:
 class Demarshaller {
 public:
 	struct Header {
-		char source_name[N_SOURCE_NAME_CHARS];
-		char source_hash[N_SOURCE_HASH_CHARS];
+		char source_name[N_SOURCE_NAME_CHARS + 1];
+		char source_hash[N_SOURCE_HASH_CHARS + 1];
 		uint32_t sequence;
 		uint8_t n_messages;
 	};
 
 	struct PositionSensor {
-		char device_name[N_DEVICE_NAME_CHARS];
+		char device_name[N_DEVICE_NAME_CHARS + 1];
 		int32_t position;
 	};
 
 	struct SetDutyCycle {
-		char device_name[N_DEVICE_NAME_CHARS];
+		char device_name[N_DEVICE_NAME_CHARS + 1];
 		int32_t duty_cycle;
 	};
 
