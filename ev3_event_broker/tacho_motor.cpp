@@ -36,8 +36,6 @@ TachoMotor::TachoMotor(const char *path)
 	m_fd_position = open_device_file(path, "/position", O_RDONLY);
 	m_fd_duty_cycle = open_device_file(path, "/duty_cycle_sp", O_WRONLY);
 	m_fd_address = open_device_file(path, "/address", O_RDONLY);
-
-	reset();
 }
 
 TachoMotor::TachoMotor(TachoMotor &&other) {

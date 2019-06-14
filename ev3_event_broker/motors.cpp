@@ -33,8 +33,15 @@ void Motors::rescan() {
 	char name_buf[1024];
 	strncpy(buf, motor_root_dir, sizeof(buf));
 
-	// Remove all existing motors from the list
-	m_motors.clear();
+	// Remove all motors from the list that no longer can be probed
+	for (auto it = m_motors.begin(); it != m_motors.end();) {
+		try {
+			it->second.name(name_buf, sizeof(name_buf));
+			it++;
+		} catch (std::system_error &) {
+			it = m_motors.erase(it);
+		}
+	}
 
 	// Iterate over the motor root directory
 	DIR *d;
@@ -45,12 +52,23 @@ void Motors::rescan() {
 			// For each file, try to create a motor instance. If this succeeds,
 			// get the motor name and add it to the motor map
 			try {
+				// Create the absolute motor path
 				snprintf(buf + motor_root_dir_len,
 				         sizeof(buf) - motor_root_dir_len, "/%s", dir->d_name);
+
+				// Create the motor instance
 				TachoMotor motor(buf);
+
+				// Fetch the motor instance path. In case it already exists in
+				// the map, do nothing. Otherwise reset the motor and add it
+				// to the mao
 				size_t name_len = motor.name(name_buf, sizeof(name_buf));
-				m_motors.emplace(
-				    std::string(name_buf, name_len), std::move(motor));
+				std::string name(name_buf, name_len);
+				if (m_motors.find(name) == m_motors.end()) {
+					motor.reset();
+					m_motors.emplace(
+						std::string(name_buf, name_len), std::move(motor));
+				}
 			} catch (std::system_error &) {
 				// Ignore failures at this point
 			}
