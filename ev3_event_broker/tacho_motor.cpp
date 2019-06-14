@@ -100,8 +100,7 @@ void TachoMotor::set_duty_cycle(int duty_cycle) {
 size_t TachoMotor::name(char *buf, size_t buf_len) const {
 	char buf_addr[16];
 	ssize_t len = err(pread(m_fd_address, buf_addr, sizeof(buf_addr), 0));
-	snprintf(buf, buf_len, "motor_%.*s", int(len), buf_addr);
-	return size_t(len);
+	return snprintf(buf, buf_len, "motor_%.*s", int(len), buf_addr);
 }
 
 }  // namespace ev3_event_broker

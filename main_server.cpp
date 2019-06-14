@@ -38,9 +38,13 @@ int main(int argc, char *argv[]) {
 
 	// Fetch all motors
 	Motors motors;
-	printf("Found %ld motors\n", motors.motors().size());
-	for (const auto &item : motors.motors()) {
-		printf("\t%s\n", item.first.c_str());
+	if (motors.motors().size() > 0) {
+		printf("Found %ld motors\n", motors.motors().size());
+		for (const auto &item : motors.motors()) {
+			printf("\t%s\n", item.first.c_str());
+		}
+	} else {
+		printf("Warning: no attached motors found\n");
 	}
 
 	// Create a marshaller instance with a randomized source_id and connect it
