@@ -175,7 +175,7 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 		                             N_SOURCE_NAME_CHARS);
 		src = read_int<uint32_t>(&m_header.sequence, src);
 		src = read_int<uint8_t>(&m_header.n_messages, src);
-		if (!filter(m_header)) {
+		if (!listener.filter(m_header)) {
 			return;
 		}
 
