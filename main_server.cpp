@@ -36,7 +36,7 @@ private:
 
 public:
 	Listener(SourceId &source_id, Motors &motors)
-	    : m_source_id(m_source_id), m_motors(motors) {}
+	    : m_source_id(source_id), m_motors(motors) {}
 
 	/**
 	 * Implementation of the filter() function. Discards messages originating
