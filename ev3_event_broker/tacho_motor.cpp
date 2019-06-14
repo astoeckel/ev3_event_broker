@@ -27,18 +27,44 @@
 
 namespace ev3_event_broker {
 
-TachoMotor::TachoMotor(const char *path) {
+TachoMotor::TachoMotor(const char *path)
+    : m_fd_command(-1),
+      m_fd_position(-1),
+      m_fd_duty_cycle(-1),
+      m_fd_address(-1) {
 	m_fd_command = open_device_file(path, "/command", O_WRONLY);
 	m_fd_position = open_device_file(path, "/position", O_RDONLY);
 	m_fd_duty_cycle = open_device_file(path, "/duty_cycle_sp", O_WRONLY);
+	m_fd_address = open_device_file(path, "/address", O_RDONLY);
 
 	reset();
 }
 
+TachoMotor::TachoMotor(TachoMotor &&other) {
+	m_fd_command = other.m_fd_command;
+	m_fd_position = other.m_fd_position;
+	m_fd_duty_cycle = other.m_fd_duty_cycle;
+	m_fd_address = other.m_fd_address;
+
+	other.m_fd_command = -1;
+	other.m_fd_position = -1;
+	other.m_fd_duty_cycle = -1;
+	other.m_fd_address = -1;
+}
+
 TachoMotor::~TachoMotor() {
-	close(m_fd_duty_cycle);
-	close(m_fd_position);
-	close(m_fd_command);
+	if (m_fd_address >= 0) {
+		close(m_fd_address);
+	}
+	if (m_fd_duty_cycle >= 0) {
+		close(m_fd_duty_cycle);
+	}
+	if (m_fd_position >= 0) {
+		close(m_fd_position);
+	}
+	if (m_fd_command >= 0) {
+		close(m_fd_command);
+	}
 }
 
 void TachoMotor::reset() {
@@ -52,7 +78,7 @@ void TachoMotor::reset() {
 	}
 }
 
-int TachoMotor::get_position() {
+int TachoMotor::get_position() const {
 	char buf[16];
 	size_t len = err(pread(m_fd_position, buf, sizeof(buf) - 1, 0));
 	buf[len] = '\0';
@@ -70,4 +96,12 @@ void TachoMotor::set_duty_cycle(int duty_cycle) {
 	snprintf(buf, sizeof(buf), "%d\n", duty_cycle);
 	err(pwrite(m_fd_duty_cycle, buf, strnlen(buf, sizeof(buf)), 0));
 }
+
+size_t TachoMotor::name(char *buf, size_t buf_len) const {
+	char buf_addr[16];
+	ssize_t len = err(pread(m_fd_address, buf_addr, sizeof(buf_addr), 0));
+	snprintf(buf, buf_len, "motor_%.*s", int(len), buf_addr);
+	return size_t(len);
+}
+
 }  // namespace ev3_event_broker

@@ -24,6 +24,8 @@ namespace ev3_event_broker {
 
 static constexpr uint32_t SYNC = 0xCAA29C3AU;
 static constexpr uint8_t TYPE_POSITION_SENSOR = 0x01;
+static constexpr uint8_t TYPE_SET_DUTY_CYCLE = 0x02;
+static constexpr uint8_t TYPE_RESET = 0xFF;
 static constexpr size_t MARSHALLER_BUF_SIZE = 1280;
 static constexpr size_t N_SOURCE_NAME_CHARS = 8;
 static constexpr size_t N_SOURCE_HASH_CHARS = 8;
@@ -31,6 +33,8 @@ static constexpr size_t N_DEVICE_NAME_CHARS = 16;
 static constexpr size_t HEADER_SIZE =
     4 + N_SOURCE_NAME_CHARS + N_SOURCE_HASH_CHARS + 4 + 1;
 static constexpr size_t POSITION_SENSOR_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;
+static constexpr size_t SET_DUTY_CYCLE_SIZE = 1 + N_DEVICE_NAME_CHARS + 4;
+static constexpr size_t RESET_SIZE = 1;
 
 class Marshaller {
 public:
@@ -48,6 +52,8 @@ private:
 
 	void flush_if_no_space(size_t size_required);
 
+	Marshaller &finalize_msg(uint8_t *tar);
+
 public:
 	Marshaller(const Callback &cback, const char *source_name,
 	           const char *source_hash);
@@ -56,7 +62,9 @@ public:
 
 	Marshaller &flush();
 
-	Marshaller &write_position_sensor(const char *device_name, int position);
+	Marshaller &write_position_sensor(const char *device_name, int32_t position);
+	Marshaller &write_set_duty_cycle(const char *device_name, int32_t duty_cycle);
+	Marshaller &write_reset();
 };
 
 class Demarshaller {
@@ -73,13 +81,24 @@ public:
 		int32_t position;
 	};
 
+	struct SetDutyCycle {
+		char device_name[N_DEVICE_NAME_CHARS];
+		int32_t duty_cycle;
+	};
+
 	struct Listener {
 		Listener(){};
 
 		virtual ~Listener(){};
 
+		virtual bool filter(const Header &) { return true; }
+
 		virtual void on_position_sensor(const Header &,
 		                                const PositionSensor &){};
+
+		virtual void on_set_duty_cycle(const Header &, const SetDutyCycle &) {};
+
+		virtual void on_reset(const Header &) {};
 	};
 
 private:
@@ -87,6 +106,7 @@ private:
 	Header m_header;
 	uint8_t m_type;
 	PositionSensor m_position_sensor;
+	SetDutyCycle m_set_duty_cycle;
 
 public:
 	Demarshaller();

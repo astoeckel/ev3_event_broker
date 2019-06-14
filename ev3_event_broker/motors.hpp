@@ -18,24 +18,20 @@
 
 #pragma once
 
+#include <map>
+#include <string>
+
+#include <ev3_event_broker/tacho_motor.hpp>
+
 namespace ev3_event_broker {
-class TachoMotor {
+class Motors {
 private:
-	int m_fd_command;
-	int m_fd_position;
-	int m_fd_duty_cycle;
-	int m_fd_address;
-
+	std::map<std::string, TachoMotor> m_motors;
 public:
-	explicit TachoMotor(const char* path);
-	TachoMotor(const TachoMotor &) = delete;
-	TachoMotor(TachoMotor &&other);
+	Motors();
 
-	~TachoMotor();
+	void rescan();
 
-	void reset();
-	int get_position() const;
-	void set_duty_cycle(int duty_cycle);
-	size_t name(char *buf, size_t buf_len) const;
+	const std::map<std::string, TachoMotor> &motors() const { return m_motors; }
 };
-}  // namespace ev3_event_broker
+}

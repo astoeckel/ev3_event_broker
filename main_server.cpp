@@ -18,29 +18,34 @@
 
 #include <cstdio>
 #include <cstring>
-#include <random>
-
-#include <unistd.h>
+#include <system_error>
 
 #include <ev3_event_broker/event_loop.hpp>
 #include <ev3_event_broker/marshaller.hpp>
+#include <ev3_event_broker/motors.hpp>
 #include <ev3_event_broker/socket.hpp>
 #include <ev3_event_broker/source_id.hpp>
-#include <ev3_event_broker/tacho_motor.hpp>
 #include <ev3_event_broker/timer.hpp>
 
 using namespace ev3_event_broker;
 
 int main(int argc, char *argv[]) {
+	// Create the UDP socket and setup all addresses
 	uint16_t port = 4721;
 	socket::Address listen_address(0, 0, 0, 0, port);
-	socket::Address broadcast_address(192, 168, 178, 255, port);
+	socket::Address broadcast_address(255, 255, 255, 255, port);
 	socket::UDP sock(listen_address);
 
+	// Fetch all motors
+	Motors motors;
+	printf("Found %ld motors\n", motors.motors().size());
+	for (const auto &item : motors.motors()) {
+		printf("\t%s\n", item.first.c_str());
+	}
+
+	// Create a marshaller instance with a randomized source_id and connect it
+	// to the socket
 	SourceId source_id("ev3");
-
-	Timer timer(10);
-
 	Marshaller marshaller(
 	    [&](const uint8_t *buf, size_t buf_size) -> bool {
 		    socket::Message msg(buf, buf_size);
@@ -49,29 +54,49 @@ int main(int argc, char *argv[]) {
 	    },
 	    source_id.name(), source_id.hash());
 
-	TachoMotor motor_D("/sys/class/tacho-motor/motor1");
+	// Repeatedly send the position of all connected motors
+	Timer position_timer(10);  // interval: 10ms
+	auto handle_position_timer = [&]() -> bool {
+		// Mark the timer event as handled
+		position_timer.consume_event();
 
+		// Send the motor position
+		try {
+			for (const auto &item : motors.motors()) {
+				marshaller.write_position_sensor(item.first.c_str(),
+					                             item.second.get_position());
+			}
+			marshaller.flush();
+		} catch (std::system_error &e) {
+			// There was an error reading from the motors, scan for new motors
+			motors.rescan();
+		}
+		return bool(marshaller);
+	};
+
+	// Rescan available motors from time to time
+	Timer rescan_timer(1000); // interval: 5s
+	auto handle_rescan_timer = [&]() -> bool {
+		rescan_timer.consume_event();
+		motors.rescan();
+		return true;
+	};
+
+	// Handle incoming commands
+	auto handle_sock = [&]() -> bool {
+		socket::Address addr;
+		socket::Message msg;
+		if (!sock.recv(addr, msg)) {
+			return false;  // Socket was closed
+		}
+		return true;
+	};
+
+	// Run the event loop
 	EventLoop()
-	    .register_event(timer,
-	                    [&]() -> bool {
-		                    // Mark the timer event as handled
-		                    timer.consume_event();
-
-		                    // Send the motor position
-		                    marshaller.write_position_sensor(
-		                        "motor_D", motor_D.get_position());
-		                    marshaller.flush();
-		                    return bool(marshaller);
-	                    })
-	    .register_event(sock,
-	                    [&]() -> bool {
-		                    socket::Address addr;
-		                    socket::Message msg;
-		                    if (!sock.recv(addr, msg)) {
-			                    return false;  // Socket was closed
-		                    }
-		                    return true;
-	                    })
+	    .register_event(position_timer, handle_position_timer)
+	    .register_event(rescan_timer, handle_rescan_timer)
+	    .register_event(sock, handle_sock)
 	    .run();
 
 	return 0;

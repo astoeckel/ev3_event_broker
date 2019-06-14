@@ -108,6 +108,12 @@ Marshaller &Marshaller::flush() {
 	return *this;
 }
 
+Marshaller &Marshaller::finalize_msg(uint8_t *tar) {
+	m_buf_ptr = tar - m_buf;
+	m_message_count++;
+	return *this;
+}
+
 Marshaller &Marshaller::write_position_sensor(const char *device_name,
                                               int32_t position) {
 	flush_if_no_space(POSITION_SENSOR_SIZE);
@@ -116,10 +122,29 @@ Marshaller &Marshaller::write_position_sensor(const char *device_name,
 	tar = write_int<uint8_t>(TYPE_POSITION_SENSOR, tar);
 	tar = write_fixed_size_string(device_name, tar, N_DEVICE_NAME_CHARS);
 	tar = write_int<int32_t>(position, tar);
-	m_buf_ptr = tar - m_buf;
-	m_message_count++;
 
-	return *this;
+	return finalize_msg(tar);
+}
+
+Marshaller &Marshaller::write_set_duty_cycle(const char *device_name,
+                                             int32_t duty_cycle) {
+	flush_if_no_space(SET_DUTY_CYCLE_SIZE);
+
+	uint8_t *tar = m_buf + m_buf_ptr;
+	tar = write_int<uint8_t>(TYPE_SET_DUTY_CYCLE, tar);
+	tar = write_fixed_size_string(device_name, tar, N_DEVICE_NAME_CHARS);
+	tar = write_int<int32_t>(duty_cycle, tar);
+
+	return finalize_msg(tar);
+}
+
+Marshaller &Marshaller::write_reset() {
+	flush_if_no_space(RESET_SIZE);
+
+	uint8_t *tar = m_buf + m_buf_ptr;
+	tar = write_int<uint8_t>(TYPE_RESET, tar);
+
+	return finalize_msg(tar);
 }
 
 /******************************************************************************
@@ -160,10 +185,35 @@ void Demarshaller::parse(Listener &listener, const uint8_t *buf,
 			// Parse the individual messages
 			switch (m_type) {
 				case TYPE_POSITION_SENSOR:
+					if (src + POSITION_SENSOR_SIZE - 1 > src_end) {
+						return;
+					}
 					src = read_fixed_size_string(m_position_sensor.device_name,
 					                             src, N_DEVICE_NAME_CHARS);
 					src = read_int<int32_t>(&m_position_sensor.position, src);
-					listener.on_position_sensor(m_header, m_position_sensor);
+					if (listener.filter(m_header)) {
+						listener.on_position_sensor(m_header,
+						                            m_position_sensor);
+					}
+					break;
+				case TYPE_SET_DUTY_CYCLE:
+					if (src + SET_DUTY_CYCLE_SIZE - 1 > src_end) {
+						return;
+					}
+					src = read_fixed_size_string(m_set_duty_cycle.device_name,
+					                             src, N_DEVICE_NAME_CHARS);
+					src = read_int<int32_t>(&m_set_duty_cycle.duty_cycle, src);
+					if (listener.filter(m_header)) {
+						listener.on_set_duty_cycle(m_header, m_set_duty_cycle);
+					}
+					break;
+				case TYPE_RESET:
+					if (src + RESET_SIZE - 1 > src_end) {
+						return;
+					}
+					if (listener.filter(m_header)) {
+						listener.on_reset(m_header);
+					}
 					break;
 				default:
 					return;
