@@ -24,30 +24,43 @@
 #include <ev3_event_broker/error.hpp>
 #include <ev3_event_broker/motors.hpp>
 
+#ifndef VIRTUAL_MOTORS
+#include <ev3_event_broker/tacho_motor.hpp>
+#else
+#include <ev3_event_broker/virtual_motor.hpp>
+#endif
+
 namespace ev3_event_broker {
 Motors::Motors() { rescan(); }
 
-TachoMotor* Motors::find(const char *name) {
-	for (TachoMotor &motor: m_motors) {
-		if (strcmp(motor.name(), name) == 0) {
-			return &motor;
+Motor *Motors::find(const char *name)
+{
+	for (auto &motor : m_motors) {
+		if (strcmp(motor->name(), name) == 0) {
+			return motor.get();
 		}
 	}
 	return nullptr;
 }
 
-void Motors::rescan() {
+void Motors::rescan()
+{
+#ifndef VIRTUAL_MOTORS
 	const char motor_root_dir[] = "/sys/class/tacho-motor";
+#else
+	const char motor_root_dir[] = "./motors";
+#endif
 	const size_t motor_root_dir_len = sizeof(motor_root_dir) - 1;
 	char buf[1024];
 	strncpy(buf, motor_root_dir, sizeof(buf));
 
 	// Remove all motors from the list that no longer can be probed (are no
 	// longer good)
-	m_motors.erase(
-	    std::remove_if(m_motors.begin(), m_motors.end(),
-	                   [](const TachoMotor &motor) { return !motor.good(); }),
-	    m_motors.end());
+	m_motors.erase(std::remove_if(m_motors.begin(), m_motors.end(),
+	                              [](const std::unique_ptr<Motor> &motor) {
+		                              return !motor->good();
+	                              }),
+	               m_motors.end());
 
 	// Iterate over the motor root directory
 	DIR *d;
@@ -62,13 +75,18 @@ void Motors::rescan() {
 				snprintf(buf + motor_root_dir_len,
 				         sizeof(buf) - motor_root_dir_len, "/%s", dir->d_name);
 
-				// Create the motor instance
-				TachoMotor motor(buf);
-				if (!find(motor.name())) {
-					motor.reset();
+// Create the motor instance
+#ifndef VIRTUAL_MOTORS
+				std::unique_ptr<TachoMotor> motor(new TachoMotor(buf));
+#else
+				std::unique_ptr<VirtualMotor> motor(new VirtualMotor(buf));
+#endif
+				if (!find(motor->name())) {
+					motor->reset();
 					m_motors.emplace_back(std::move(motor));
 				}
-			} catch (std::system_error &) {
+			}
+			catch (std::system_error &) {
 				// Ignore failures at this point
 			}
 		}

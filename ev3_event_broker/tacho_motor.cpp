@@ -16,7 +16,6 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdlib>
 #include <cstring>
 
 #include <unistd.h>
@@ -37,23 +36,6 @@ TachoMotor::TachoMotor(const char *path)
 	m_fd_duty_cycle = open_device_file(path, "/duty_cycle_sp", O_WRONLY);
 	m_fd_state = open_device_file(path, "/state", O_RDONLY);
 	read_name(path);
-}
-
-TachoMotor::TachoMotor(TachoMotor &&other) { *this = std::move(other); }
-
-TachoMotor &TachoMotor::operator=(TachoMotor &&other) {
-	m_fd_command = other.m_fd_command;
-	m_fd_position = other.m_fd_position;
-	m_fd_duty_cycle = other.m_fd_duty_cycle;
-	m_fd_state = other.m_fd_state;
-	strncpy(m_name, other.m_name, sizeof(m_name));
-
-	other.m_fd_command = -1;
-	other.m_fd_position = -1;
-	other.m_fd_duty_cycle = -1;
-	other.m_fd_state = -1;
-
-	return *this;
 }
 
 void TachoMotor::read_name(const char *path) {

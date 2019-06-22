@@ -17,6 +17,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <random>
@@ -24,15 +25,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <CLI/CLI.hpp>
 #include <json.hpp>
 
+#include <ev3_event_broker/argparse.hpp>
 #include <ev3_event_broker/error.hpp>
 #include <ev3_event_broker/event_loop.hpp>
 #include <ev3_event_broker/marshaller.hpp>
 #include <ev3_event_broker/socket.hpp>
 #include <ev3_event_broker/source_id.hpp>
-#include <ev3_event_broker/timer.hpp>
 
 using namespace nlohmann;
 using namespace ev3_event_broker;
@@ -44,13 +44,16 @@ private:
 
 public:
 	Listener(SourceId &source_id, socket::Address &source_address)
-	    : m_source_id(source_id), m_source_address(source_address) {}
+	    : m_source_id(source_id), m_source_address(source_address)
+	{
+	}
 
 	/**
 	 * Implementation of the filter() function. Discards messages originating
 	 * from this device.
 	 */
-	bool filter(const Demarshaller::Header &header) override {
+	bool filter(const Demarshaller::Header &header) override
+	{
 		return (strcmp(header.source_name, m_source_id.name()) != 0) ||
 		       (strcmp(header.source_hash, m_source_id.hash()) != 0);
 	}
@@ -60,7 +63,8 @@ public:
 	 */
 	void on_position_sensor(
 	    const Demarshaller::Header &header,
-	    const Demarshaller::PositionSensor &position) override {
+	    const Demarshaller::PositionSensor &position) override
+	{
 		const auto &ip = m_source_address;
 		std::cout << json({{"source_name", header.source_name},
 		                   {"source_hash", header.source_hash},
@@ -73,7 +77,8 @@ public:
 		          << std::endl;
 	}
 
-	void on_heartbeat(const Demarshaller::Header &header) override {
+	void on_heartbeat(const Demarshaller::Header &header) override
+	{
 		const auto &ip = m_source_address;
 		std::cout << json({{"source_name", header.source_name},
 		                   {"source_hash", header.source_hash},
@@ -85,21 +90,32 @@ public:
 	}
 };
 
-static void make_nonblock(int fd) {
+static void make_nonblock(int fd)
+{
 	int flags = err(fcntl(fd, F_GETFL));
 	err(fcntl(fd, F_SETFL, flags | O_NONBLOCK));
 }
 
-int main(int argc, char *argv[]) {
-	// Default port to listen on
-	uint16_t port = 4721;
-	std::string device_name = "nengo";
+int main(int argc, const char *argv[])
+{
+	int port;
+	std::string device_name = "EV3_CLIENT";
 
-	CLI::App app{"EV3 Event Broker Client"};
-	app.add_option("-p,--port", port, "The UDP port to listen on");
-	app.add_option("-n,--name", device_name, "Name of this device");
-
-	CLI11_PARSE(app, argc, argv);
+	Argparse(argv[0],
+	         "Dispatches incoming EV3 Event Broker messages as JSON on stdout "
+	         "and reads JSON commands from stdin.")
+	    .add_arg("port", "The UDP port to listen on", "4721",
+	             [&](const char *value) -> bool {
+		             char *endptr;
+		             port = strtol(value, &endptr, 10);
+		             return *endptr == '\0';
+	             })
+	    .add_arg("name", "Name of this device", device_name.c_str(),
+	             [&](const char *value) -> bool {
+		             device_name = value;
+		             return true;
+	             })
+	    .parse(argc, argv);
 
 	socket::Address source_address(0, 0, 0, 0, 0);
 	socket::Address listen_address(0, 0, 0, 0, port);
@@ -140,7 +156,8 @@ int main(int argc, char *argv[]) {
 			if (ret < 0 &&
 			    (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
 				return true;
-			} else if (ret < 0) {
+			}
+			else if (ret < 0) {
 				return false;
 			}
 
@@ -161,10 +178,12 @@ int main(int argc, char *argv[]) {
 				std::string device = msg["device"].get<std::string>();
 				int duty_cycle = msg["duty_cycle"].get<int>();
 				marshaller.write_set_duty_cycle(device.c_str(), duty_cycle);
-			} else if (type == "reset") {
+			}
+			else if (type == "reset") {
 				marshaller.write_reset();
 			}
-		} catch (json::exception &e) {
+		}
+		catch (json::exception &e) {
 			std::cout << json({{"type", "error"}, {"what", e.what()}})
 			          << std::endl;
 		}

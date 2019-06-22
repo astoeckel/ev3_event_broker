@@ -20,14 +20,12 @@
 #include <cstring>
 #include <system_error>
 
-#include <CLI/CLI.hpp>
-
+#include <ev3_event_broker/argparse.hpp>
 #include <ev3_event_broker/event_loop.hpp>
 #include <ev3_event_broker/marshaller.hpp>
 #include <ev3_event_broker/motors.hpp>
 #include <ev3_event_broker/socket.hpp>
 #include <ev3_event_broker/source_id.hpp>
-#include <ev3_event_broker/timer.hpp>
 
 using namespace ev3_event_broker;
 
@@ -38,51 +36,80 @@ private:
 
 public:
 	Listener(SourceId &source_id, Motors &motors)
-	    : m_source_id(source_id), m_motors(motors) {}
+	    : m_source_id(source_id), m_motors(motors)
+	{
+	}
 
 	/**
 	 * Implementation of the filter() function. Discards messages originating
 	 * from this device.
 	 */
-	bool filter(const Demarshaller::Header &header) override {
+	bool filter(const Demarshaller::Header &header) override
+	{
 		return (strcmp(header.source_name, m_source_id.name()) != 0) ||
 		       (strcmp(header.source_hash, m_source_id.hash()) != 0);
 	}
 
 	void on_set_duty_cycle(
 	    const Demarshaller::Header &,
-	    const Demarshaller::SetDutyCycle &set_duty_cycle) override {
-		TachoMotor *motor = m_motors.find(set_duty_cycle.device_name);
-		if (motor) {
-			motor->set_duty_cycle(set_duty_cycle.duty_cycle);
+	    const Demarshaller::SetDutyCycle &set_duty_cycle) override
+	{
+		try {
+			Motor *motor = m_motors.find(set_duty_cycle.device_name);
+			if (motor) {
+				motor->set_duty_cycle(set_duty_cycle.duty_cycle);
+			}
+		}
+		catch (std::system_error &) {
+			m_motors.rescan();
 		}
 	}
 
-	void on_reset(const Demarshaller::Header &) override {
-		for (TachoMotor &motor : m_motors.motors()) {
-			motor.reset();
+	void on_reset(const Demarshaller::Header &) override
+	{
+		for (auto &motor : m_motors.motors()) {
+			try {
+				motor->reset();
+			}
+			catch (std::system_error &) {
+				// Do nothing here, just continue resetting
+			}
 		}
 	}
 };
 
-int main(int argc, char *argv[]) {
-	// Default port to listen on
-	uint16_t port = 4721;
+int main(int argc, const char *argv[])
+{
+	uint16_t port;
+#ifndef VIRTUAL_MOTORS
 	std::string device_name = "EV3";
+#else
+	std::string device_name = "EV3_VIRT";
+#endif
 
-	CLI::App app{"EV3 Event Broker Server"};
-	app.add_option("-p,--port", port, "The UDP port to listen on");
-	app.add_option("-n,--name", device_name, "Name of this device");
-
-	CLI11_PARSE(app, argc, argv);
+	Argparse(argv[0],
+	         "Dispatches incoming EV3 Event Broker messages as JSON on stdout "
+	         "and reads JSON commands from stdin.")
+	    .add_arg("port", "The UDP port to listen on", "4721",
+	             [&](const char *value) -> bool {
+		             char *endptr;
+		             port = strtol(value, &endptr, 10);
+		             return *endptr == '\0';
+	             })
+	    .add_arg("name", "Name of this device", device_name.c_str(),
+	             [&](const char *value) -> bool {
+		             device_name = value;
+		             return true;
+	             })
+	    .parse(argc, argv);
 
 	// Create the UDP socket and setup all addresses
 	socket::Address listen_address(0, 0, 0, 0, port);
 	socket::Address broadcast_address(255, 255, 255, 255, port);
 	socket::UDP sock(listen_address);
-	fprintf(stderr, "Listening on %d.%d.%d.%d:%d as \"%s\"...\n", listen_address.a,
-	       listen_address.b, listen_address.c, listen_address.d, port,
-	       device_name.c_str());
+	fprintf(stderr, "Listening on %d.%d.%d.%d:%d as \"%s\"...\n",
+	        listen_address.a, listen_address.b, listen_address.c,
+	        listen_address.d, port, device_name.c_str());
 
 	// Fetch all motors
 	Motors motors;
@@ -103,37 +130,28 @@ int main(int argc, char *argv[]) {
 	Demarshaller demarshaller;
 
 	// Repeatedly send the position of all connected motors
-	Timer position_timer(10);  // interval: 10ms
 	auto handle_position_timer = [&]() -> bool {
-		// Mark the timer event as handled
-		position_timer.consume_event();
-
-		// Send the motor position
 		try {
 			for (const auto &motor : motors.motors()) {
-				marshaller.write_position_sensor(motor.name(),
-				                                 motor.get_position());
+				marshaller.write_position_sensor(motor->name(),
+				                                 motor->get_position());
 			}
 			marshaller.flush();
-		} catch (std::system_error &e) {
-			// There was an error reading from the motors, scan for new motors
+		}
+		catch (std::system_error &e) {
 			motors.rescan();
 		}
 		return bool(marshaller);
 	};
 
 	// Rescan available motors from time to time
-	Timer rescan_timer(1000);
 	auto handle_rescan_timer = [&]() -> bool {
-		rescan_timer.consume_event();
 		motors.rescan();
 		return true;
 	};
 
 	// Timer sending a regular heartbeat
-	Timer heartbeat_timer(1000);
 	auto handle_hearbeat_timer = [&]() -> bool {
-		heartbeat_timer.consume_event();
 		marshaller.write_heartbeat();
 		marshaller.flush();
 		return true;
@@ -152,9 +170,9 @@ int main(int argc, char *argv[]) {
 
 	// Run the event loop
 	EventLoop()
-	    .register_event(position_timer, handle_position_timer)
-	    .register_event(rescan_timer, handle_rescan_timer)
-	    .register_event(heartbeat_timer, handle_hearbeat_timer)
+	    .register_timer(10, handle_position_timer)
+	    .register_timer(1000, handle_rescan_timer)
+	    .register_timer(1000, handle_hearbeat_timer)
 	    .register_event(sock, handle_sock)
 	    .run();
 

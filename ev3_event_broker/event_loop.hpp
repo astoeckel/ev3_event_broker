@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -39,6 +41,8 @@ public:
 	EventLoop &register_event(T &obj, const Callback &cback) {
 		return register_event_fd(obj.fd(), cback);
 	}
+
+	EventLoop &register_timer(int interval_ms, const Callback &cback);
 
 	void run();
 };

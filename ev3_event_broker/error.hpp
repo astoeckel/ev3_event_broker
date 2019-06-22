@@ -16,6 +16,15 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file error.hpp
+ *
+ * Error handling routines. In particular, defines the function "err" that
+ * throws syscall errors as an exception.
+ *
+ * @author Andreas Stöckel
+ */
+
 #pragma once
 
 #include <cerrno>
@@ -23,6 +32,11 @@
 
 namespace ev3_event_broker {
 
+/**
+ * Takes a syscall result and checks whether it is smaller than zero. If yes,
+ * throws a system_error() with the corresponding errno. Returns the syscall
+ * result.
+ */
 template <typename T>
 static T err(T res) {
 	if (res < 0) {

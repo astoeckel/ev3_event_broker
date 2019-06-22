@@ -18,8 +18,10 @@
 
 #pragma once
 
+#include <ev3_event_broker/motor.hpp>
+
 namespace ev3_event_broker {
-class TachoMotor {
+class TachoMotor : public Motor {
 private:
 	int m_fd_command;
 	int m_fd_position;
@@ -31,21 +33,11 @@ private:
 
 public:
 	explicit TachoMotor(const char *path);
-	TachoMotor(const TachoMotor &) = delete;
-	TachoMotor &operator=(const TachoMotor &) = delete;
-
-	TachoMotor(TachoMotor &&other);
-	TachoMotor &operator=(TachoMotor &&);
-
-	~TachoMotor();
-
-	void reset();
-
-	bool good() const;
-
-	int get_position() const;
-	void set_duty_cycle(int duty_cycle);
-
-	const char *name() const { return m_name; }
+	~TachoMotor() override;
+	void reset() override;
+	bool good() const override;
+	int get_position() const override;
+	void set_duty_cycle(int duty_cycle) override;
+	const char *name() const override { return m_name; }
 };
 }  // namespace ev3_event_broker

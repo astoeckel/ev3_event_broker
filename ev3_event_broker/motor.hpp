@@ -20,17 +20,14 @@
 
 namespace ev3_event_broker {
 
-class Timer {
-private:
-	int m_fd;
-
+class Motor {
 public:
-	Timer(int interval_ms);
-	~Timer();
-
-	void consume_event();
-
-	int fd() const { return m_fd; }
+	virtual ~Motor() {}
+	virtual void reset() = 0;
+	virtual bool good() const = 0;
+	virtual int get_position() const = 0;
+	virtual void set_duty_cycle(int duty_cycle) = 0;
+	virtual const char *name() const = 0;
 };
 
 }  // namespace ev3_event_broker

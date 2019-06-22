@@ -16,74 +16,108 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdlib>
+#include <algorithm>
+#include <chrono>
+#include <climits>
 #include <cstdint>
 #include <vector>
 
-#include <sys/epoll.h>
+#include <poll.h>
 #include <unistd.h>
 
 #include <ev3_event_broker/error.hpp>
 #include <ev3_event_broker/event_loop.hpp>
 
+namespace ev3_event_broker {
+
 /******************************************************************************
  * Class EventLoop::Impl                                                      *
  ******************************************************************************/
 
-namespace ev3_event_broker {
-
 class EventLoop::Impl {
 private:
-	std::vector<Callback> m_cbacks;
-	std::vector<struct epoll_event> m_events;
+	static int64_t now()
+	{
+		const auto t = std::chrono::steady_clock::now().time_since_epoch();
+		return std::chrono::duration_cast<std::chrono::milliseconds>(t).count();
+	}
 
-	int m_epoll_fd;
+	struct Timer {
+		Callback cback;
+		int32_t interval;
+		int64_t next_time;
+
+		Timer(const Callback &cback, int32_t interval, int64_t next_time)
+		    : cback(cback), interval(interval), next_time(next_time)
+		{
+		}
+	};
+
+	std::vector<Callback> m_cbacks;
+	std::vector<struct pollfd> m_pollfds;
+
+	std::vector<Timer> m_timers;
+
+	int compute_timeout()
+	{
+		int64_t t0 = now();
+		int64_t timeout = INT_MAX;
+		for (const auto &timer : m_timers) {
+			timeout = std::min(timeout, timer.next_time - t0);
+		}
+		return timeout;
+	}
 
 public:
-	Impl() { m_epoll_fd = err(epoll_create1(EPOLL_CLOEXEC)); }
-
-	~Impl() {
-		close(m_epoll_fd);
-	}
-
-	void register_event_fd(int fd, const EventLoop::Callback &cback) {
-		// Get the index of the new event
-		const size_t idx = m_cbacks.size();
-
-		// Store the callback
+	void register_event_fd(int fd, const EventLoop::Callback &cback)
+	{
 		m_cbacks.push_back(cback);
-
-		// Create an event
-		struct epoll_event event;
-		event.events = EPOLLIN;
-		event.data.u64 = uintptr_t(idx);
-
-		// Register the event and store it in the list of events
-		epoll_ctl(m_epoll_fd, EPOLL_CTL_ADD, fd, &event);
-
-		// Reset
-		event.events = 0;
-		m_events.push_back(event);
+		m_pollfds.emplace_back(pollfd{fd, POLLIN, 0});
 	}
 
-	void run() {
+	void register_timer(int interval_ms, const EventLoop::Callback &cback)
+	{
+		m_timers.emplace_back(cback, interval_ms, now() + interval_ms);
+	}
+
+	void run()
+	{
 		while (true) {
-			int count =
-			    epoll_wait(m_epoll_fd, m_events.data(), m_events.size(), -1);
-			if (count >= 0) {
-				for (struct epoll_event &event : m_events) {
-					if (event.events) {
-						const size_t idx = event.data.u64;
-						event.events = 0;
-						if (!m_cbacks[idx]()) {
-							return;
+			// Compute the time until the next timeout event
+			int timeout = compute_timeout();
+
+			// If there is time to wait, wait for incoming events
+			if (timeout > 0) {
+				int res;
+				res = poll(m_pollfds.data(), m_pollfds.size(), timeout);
+				if (res >= 0) {
+					for (size_t i = 0; i < m_pollfds.size(); i++) {
+						struct pollfd &fd = m_pollfds[i];
+						if (fd.revents) {
+							fd.revents = 0;
+							if (!m_cbacks[i]()) {
+								return;
+							}
 						}
 					}
 				}
-			} else if (count < 0 && errno == EINTR) {
-				continue;
-			} else {
-				throw std::system_error(errno, std::system_category());
+				else if (res < 0 && errno == EINTR) {
+					continue;
+				}
+				else {
+					throw std::system_error(errno, std::system_category());
+				}
+			}
+
+			// Execute timers
+			int64_t t = now();
+			for (Timer &timer : m_timers) {
+				if (t >= timer.next_time) {
+					timer.next_time = t + timer.interval;
+					if (!timer.cback()) {
+						return;
+					}
+				}
 			}
 		}
 	}
@@ -93,15 +127,22 @@ public:
  * Class EventLoop                                                            *
  ******************************************************************************/
 
-EventLoop::EventLoop() : m_impl(new Impl()) {
-}
+EventLoop::EventLoop() : m_impl(new Impl()) {}
 
-EventLoop::~EventLoop() {
+EventLoop::~EventLoop()
+{
 	// Do nothing here, implicitly delete the object
 }
 
-EventLoop &EventLoop::register_event_fd(int fd, const Callback &cback) {
+EventLoop &EventLoop::register_event_fd(int fd, const Callback &cback)
+{
 	m_impl->register_event_fd(fd, cback);
+	return *this;
+}
+
+EventLoop &EventLoop::register_timer(int interval_ms, const Callback &cback)
+{
+	m_impl->register_timer(interval_ms, cback);
 	return *this;
 }
 

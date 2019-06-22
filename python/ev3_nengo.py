@@ -37,19 +37,24 @@ class Ev3BrokerClientWrapper:
     def get_empty_source():
         return {
             "source_hash": None,
-            "positions": {},
-            "duty_cycles": {},
+            "position": {},
+            "position_offs": {},
+            "duty_cycle": {},
+            "last_time": {},
         }
 
     def get_source_for_message(self, msg):
-        # Make sure all the important message parts are here
-        if not all(s in msg for s in (
-                "source_name", "source_hash", "ip", "port")):
+        # Make sure all the important message parts are there
+        if not all(
+                s in msg
+                for s in ("source_name", "source_hash", "ip", "port")):
             return None
 
         # Fetch the source entry
         source_name = msg["source_name"]
         if (not source_name in self.sources):
+            print("New source \"" + msg["source_name"] + ":" +
+                  msg["source_hash"] + "\"")
             self.sources[source_name] = self.get_empty_source()
         dev = self.sources[source_name]
         if dev["source_hash"] != msg["source_hash"]:
@@ -77,7 +82,12 @@ class Ev3BrokerClientWrapper:
 
                 type_ = None if not "type" in msg else msg["type"]
                 if type_ == "position":
-                    source["positions"][msg["device"]] = msg["position"]
+                    dev = msg["device"]
+                    if not dev in source["position"]:
+                        print("New device \"" + msg["source_name"] + ":" +
+                              msg["source_hash"] + ":" + dev + "\"")
+                        source["position_offs"][dev] = msg["position"]
+                    source["position"][dev] = msg["position"]
                 if not "type" in msg:
                     continue
 
@@ -111,10 +121,35 @@ class Ev3BrokerClientWrapper:
             [exe, '-p', str(port), '-n', name],
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            stderr=subprocess.STDOUT, bufsize=1, close_fds=ON_POSIX)
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            close_fds=ON_POSIX)
         self.thread = threading.Thread(
-            target=Ev3BrokerClientWrapper.parse_subprocess_output, args=(self, self.process.stdout))
+            target=Ev3BrokerClientWrapper.parse_subprocess_output,
+            args=(self, self.process.stdout))
         self.thread.start()
+
+    def send_message(self, source, tag=None, min_msg_delay=10e-3, **kwargs):
+        # Fetch the current time
+        t = time.time()
+
+        # If a "tag" is specified, limit the number of messages for that tag
+        if not tag is None:
+            if not tag in source["last_time"]:
+                source["last_time"][tag] = 0
+            if t - source["last_time"][tag] < min_msg_delay:
+                return False
+            source["last_time"][tag] = t
+
+        # Abort if the source does not have an ip/port
+        if not (("ip" in source) and ("port" in source)):
+            return False
+
+        msg = {**{"ip": source["ip"], "port": source["port"]}, **kwargs}
+        self.process.stdin.write((json.dumps(msg) + '\n').encode('utf-8'))
+        self.process.stdin.flush()
+
+        return True
 
     def set_duty_cycle(self, target, device, duty_cycle):
         # Cancel if the subprocess is no longer open
@@ -131,41 +166,38 @@ class Ev3BrokerClientWrapper:
 
         # Only send a duty cycle update in case there is a change in the duty
         # cycle
-        if not device in source["duty_cycles"]:
-            source["duty_cycles"][device] = None
-        if duty_cycle != source["duty_cycles"][device]:
-            source["duty_cycles"][device] = duty_cycle
-            if not(("ip" in source) and ("port" in source)):
-                return False
+        if not device in source["duty_cycle"]:
+            source["duty_cycle"][device] = None
 
-            # Assemble the message
-            msg = {
-                "ip": source["ip"],
-                "port": source["port"],
-                "type": "set_duty_cycle",
-                "device": device,
-                "duty_cycle": duty_cycle,
-            }
-            self.process.stdin.write((json.dumps(msg) + '\n').encode('utf-8'))
-            self.process.stdin.flush()
+#        if duty_cycle != source["duty_cycle"][device]:
+        # Send the message
+        if self.send_message(
+                source,
+                device,
+                type="set_duty_cycle",
+                device=device,
+                duty_cycle=duty_cycle):
+            source["duty_cycle"][device] = duty_cycle
 
-    def reset(self, target=None):
+    def reset(self, target=None, repeat=10, reset_position=True):
         # Cancel if the subprocess is no longer open
         if self.process is None:
             return False
 
-        for source_name, source in self.sources.items():
-            if (target is None) or (target == source_name):
-                if not (("ip" in source) and ("port" in source)):
-                    continue
-                msg = {
-                    "ip": source["ip"],
-                    "port": source["port"],
-                    "type": "reset",
-                }
-                for i in range(10):
-                    self.process.stdin.write((json.dumps(msg) + '\n').encode('utf-8'))
-                    self.process.stdin.flush()
+        for i in range(repeat):
+            for source_name, source in self.sources.items():
+                if (target is None) or (target == source_name):
+                    self.send_message(source, None, type="reset")
+            time.sleep(0.02)
+
+        # Reset the positions and position offsets
+        if reset_position:
+            for source_name, source in self.sources.items():
+                if (target is None) or (target == source_name):
+                    source["position"] = {}
+                    source["position_offs"] = {}
+                    source["duty_cycle"] = {}
+                    source["last_time"] = {}
 
     def close(self):
         if not self.process is None:
@@ -179,6 +211,7 @@ class Ev3BrokerClientWrapper:
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.close()
+
 
 def make_node_fun(target, exe=None, port=None, name=None):
     # Fetch a new instance of the client wrapper
@@ -198,15 +231,20 @@ def make_node_fun(target, exe=None, port=None, name=None):
 
         # Return the positions
         res = np.zeros(4)
-        for i, dev in enumerate(["motor_outA", "motor_outB", "motor_outC", "motor_outD"]):
-            if dev in source["positions"]:
-                angle = np.pi * source["positions"][dev] / 180.0
-                x, y = np.sin(angle), np.cos(angle)
-                res[i] = np.arctan2(x, y) / np.pi
+        for i, dev in enumerate(
+            ["motor_outA", "motor_outB", "motor_outC", "motor_outD"]):
+            if dev in source["position"]:
+                res[i] = (source["position"][dev] -
+                          source["position_offs"][dev]) / 180
         return res
 
-    setattr(node_fun, 'ev3_wrapper', inst)
+    def reset():
+        inst.reset(target)
+
+    setattr(node_fun, "ev3_wrapper", inst)
+    setattr(node_fun, "reset", reset)
     return node_fun
+
 
 if __name__ == "__main__":
     import time
@@ -217,3 +255,4 @@ if __name__ == "__main__":
         node_fun(0, np.array((1, -3, 2, -2)) * i / 100)
         time.sleep(0.1)
     node_fun.ev3_wrapper.close()
+

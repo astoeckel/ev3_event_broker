@@ -69,7 +69,7 @@ UDP::UDP(Address addr) : m_addr(addr), m_sockfd(-1)
 	int optval;
 
 	// Create the socket
-	m_sockfd = err(::socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+	m_sockfd = err(::socket(AF_INET, SOCK_DGRAM, 0));
 
 	// Mark the socket as reusable
 	optval = 1;

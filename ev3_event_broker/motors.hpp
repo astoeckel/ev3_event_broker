@@ -20,21 +20,22 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 
-#include <ev3_event_broker/tacho_motor.hpp>
+#include <ev3_event_broker/motor.hpp>
 
 namespace ev3_event_broker {
 class Motors {
 private:
-	std::vector<TachoMotor> m_motors;
+	std::vector<std::unique_ptr<Motor>> m_motors;
 public:
 	Motors();
 
 	void rescan();
 
-	const std::vector<TachoMotor> &motors() const { return m_motors; }
-	std::vector<TachoMotor> &motors() { return m_motors; }
+	const std::vector<std::unique_ptr<Motor>> &motors() const { return m_motors; }
+	std::vector<std::unique_ptr<Motor>> &motors() { return m_motors; }
 
-	TachoMotor *find(const char *name);
+	Motor *find(const char *name);
 };
 }

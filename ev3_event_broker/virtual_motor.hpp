@@ -16,32 +16,29 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <cstdint>
+#pragma once
 
-#include <unistd.h>
-#include <sys/timerfd.h>
+#ifdef VIRTUAL_MOTORS
 
-#include <ev3_event_broker/error.hpp>
-#include <ev3_event_broker/timer.hpp>
+#include <ev3_event_broker/tacho_motor.hpp>
 
 namespace ev3_event_broker {
+class VirtualMotor : public TachoMotor {
+private:
+	double m_x0, m_v0, m_t0, m_vtar, m_pos_offs;
 
-Timer::Timer(int interval_ms) {
-	struct itimerspec ts;
-	ts.it_interval.tv_sec = interval_ms / 1000L;
-	ts.it_interval.tv_nsec = long(interval_ms % 1000L) * 1000L * 1000L;
-	ts.it_value.tv_sec = ts.it_interval.tv_sec;
-	ts.it_value.tv_nsec = ts.it_interval.tv_nsec;
+	double get_precise_velocity(double t1) const;
+	double get_precise_position(double t1) const;
 
-	m_fd = err(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC));
-	err(timerfd_settime(m_fd, 0, &ts, nullptr));
-}
-
-Timer::~Timer() { close(m_fd); }
-
-void Timer::consume_event() {
-	uint64_t buf;
-	err(read(m_fd, &buf, 8));
-}
+public:
+	explicit VirtualMotor(const char *path);
+	~VirtualMotor() override;
+	void reset() override;
+	int get_position() const override;
+	void set_duty_cycle(int duty_cycle) override;
+};
 
 }  // namespace ev3_event_broker
+
+#endif
+

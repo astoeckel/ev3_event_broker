@@ -16,6 +16,17 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file common.hpp
+ *
+ * Contains some functions common to all the device drivers, such as opening a
+ * control file belonging to a device.
+ *
+ * @author Andreas Stöckel
+ */
+
+#pragma once
+
 #include <cstring>
 
 #include <sys/types.h>
@@ -26,12 +37,21 @@
 
 namespace ev3_event_broker {
 
-static void cat_cstr(const char *path, const char *suffix, char *tar,
+/**
+ * Concatenates the two given strings and writes them to the target memory. Note
+ * that at most tar_size - 1 characters will be copied to ensure that the target
+ * string is properly zero-terminated.
+ */
+static inline void cat_cstr(const char *prefix, const char *suffix, char *tar,
                      size_t tar_size) {
-	strncpy(tar, path, tar_size - 1);
+	strncpy(tar, prefix, tar_size - 1);
 	strncat(tar, suffix, tar_size - 1);
 }
 
+/**
+ * Opens the device file "device_file" in the directory "device_path" and
+ * returns the corresponding file descriptor.
+ */
 static int open_device_file(const char *device_path, const char *device_file,
                             int flags, mode_t mode = 0) {
 	char filename[4096];
