@@ -211,7 +211,7 @@ Duty cycle |    4 Bytes | signed int
 Type       |    1 Bytes | 0x03
 ```
 
-### Reset
+### Reset (`client --> server`)
 ```
 Type       |    1 Bytes | 0xFF
 ```
