@@ -101,7 +101,7 @@ def node_fun_wrapper(t, x):
     if active[0]:
         return node_fun(t, x)
     else:
-        return 0 * x
+        return np.zeros(4)
 
 # Create the nengo network
 import nengo
