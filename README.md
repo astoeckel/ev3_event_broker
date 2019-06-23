@@ -96,7 +96,7 @@ node_fun = ev3_nengo.make_node_fun('EV3', exe=broker_exe)
 
 # Only activate communication with the client right away if we're not in the
 # GUI
-active = [__file__ == '__main__']
+active = [__name__ == '__main__']
 def node_fun_wrapper(t, x):
     if active[0]:
         return node_fun(t, x)
