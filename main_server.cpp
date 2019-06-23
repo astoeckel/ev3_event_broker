@@ -31,12 +31,13 @@ using namespace ev3_event_broker;
 
 class Listener : public Demarshaller::Listener {
 private:
+	bool &m_conflict;
 	SourceId &m_source_id;
 	Motors &m_motors;
 
 public:
-	Listener(SourceId &source_id, Motors &motors)
-	    : m_source_id(source_id), m_motors(motors)
+	Listener(bool &conflict, SourceId &source_id, Motors &motors)
+	    : m_conflict(conflict), m_source_id(source_id), m_motors(motors)
 	{
 	}
 
@@ -75,6 +76,11 @@ public:
 				// Do nothing here, just continue resetting
 			}
 		}
+	}
+
+	void on_heartbeat(const Demarshaller::Header &header) override
+	{
+		m_conflict |= (strcmp(header.source_name, m_source_id.name()) == 0);
 	}
 };
 
@@ -125,12 +131,18 @@ int main(int argc, const char *argv[])
 	    },
 	    source_id.name(), source_id.hash());
 
-	// Setup the demarshaller for incoming messages
-	Listener listener(source_id, motors);
+	// Setup the demarshaller for incoming messages, create a variable
+	// indicating whether there was a conflict or not.
+	bool conflict = false;
+	Listener listener(conflict, source_id, motors);
 	Demarshaller demarshaller;
 
-	// Repeatedly send the position of all connected motors
-	auto handle_position_timer = [&]() -> bool {
+	// Periodically send all sensor data
+	bool sensor_broadcast_enabled = false;
+	auto handle_sensor_timer = [&]() -> bool {
+		if (!sensor_broadcast_enabled) {
+			return true;
+		}
 		try {
 			for (const auto &motor : motors.motors()) {
 				marshaller.write_position_sensor(motor->name(),
@@ -151,7 +163,18 @@ int main(int argc, const char *argv[])
 	};
 
 	// Timer sending a regular heartbeat
+	int n_heartbeat = 0;
 	auto handle_hearbeat_timer = [&]() -> bool {
+		n_heartbeat++;
+		if (!sensor_broadcast_enabled && conflict) {
+			fprintf(stderr,
+			        "ERROR: Another device is already active with name \"%s\". Aborting.\n",
+			        source_id.name());
+			exit(EXIT_FAILURE);
+		}
+		else if (n_heartbeat > 4 && !conflict) {
+			sensor_broadcast_enabled = true;
+		}
 		marshaller.write_heartbeat();
 		marshaller.flush();
 		return true;
@@ -170,9 +193,9 @@ int main(int argc, const char *argv[])
 
 	// Run the event loop
 	EventLoop()
-	    .register_timer(10, handle_position_timer)
+	    .register_timer(10, handle_sensor_timer)
 	    .register_timer(1000, handle_rescan_timer)
-	    .register_timer(1000, handle_hearbeat_timer)
+	    .register_timer(250, handle_hearbeat_timer)
 	    .register_event(sock, handle_sock)
 	    .run();
 
