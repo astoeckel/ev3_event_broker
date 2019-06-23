@@ -5,7 +5,7 @@ This repository contains two programs `ev3_broker_server` and `ev3_broker_client
 
 The programs in this repository are designed to be extremely fast ‒ for example, the server program `ev3_broker_server` running on the EV3 brick will never perform any heap allocations after startup, and the use of UDP as an underlying protocol minimizes overhead. This software can be used in high-speed control loops (running at about 100 Hz), where the controller resides on the host computer.
 
-**Note:** Right now, the software does not contain support for devices other than the `tacho-motor`.
+**Note:** As of now, the software does not contain support for devices other than the `tacho-motor`.
 
 ## Features
 
@@ -13,11 +13,12 @@ The programs in this repository are designed to be extremely fast ‒ for exampl
 * Lightweight, connection-less UDP-based message bus
 * Motor auto-discovery and hot-plug capability
 * Nengo integration
+* Allows to read tacho-motor positions and to set the motor PWM duty-cycle (roughly proportional to the current/torque)
 
 ## Overview
 *EV3 Event Broker* is based on a simple UDP-based message bus (see below for a description of the format). Each EV3 device in the network is assigned a unique name which is used to identify devices and their IP address on the network.
 
-`ev3_broker_server` runs on the LEGO® brick and broadcasts sensor positions as UDP packages. At the same time it waits for incoming UDP packages containing commands, such as setting the duty cycle of a motor.
+`ev3_broker_server` runs on the LEGO® brick and broadcasts sensor data as UDP packages. At the same time it waits for incoming UDP packages containing commands, such as setting the duty cycle of a motor.
 
 `ev3_broker_client` receives messages from all bricks on the network and writes them to stdout encapsulated in JSON for processing in another applications. Furthermore, it waits on stdin for JSON-encapsulated strings containing commands.
 
