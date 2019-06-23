@@ -180,7 +180,7 @@ All integers are serialized as **big-endian**. All strings are fixed size; if th
 
 ### Message header
 
-The message header is used in both communication directions. Note that the `source name` and `source hash` always refer to the sender of the message; i.e., in `client --> server` messages the source name and source hash could be used by the server to identify the client. In particular, both `ev3_broker_client` and `ev3_broker_server` will discard all messages in which `source_name` and `source_hash` match the own name and hash. This is necessary because of UDP broadcasts being received by the sender itself.
+The message header is used in both communication directions. Note that the `source name` and `source hash` always refer to the sender of the message; i.e., in `client --> server` messages the source name and source hash could be used by the server to identify the client. In particular, both `ev3_broker_client` and `ev3_broker_server` will discard all messages in which `source_name` and `source_hash` match their own name and hash. This is necessary because of UDP broadcasts being received by the sender itself.
 
 When assembling these messages, you must ensure that the total packet length is never larger than the MTU (the C++ code limits the packet size to 1280 bytes).
 
