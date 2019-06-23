@@ -33,6 +33,8 @@ make
 ```
 This should create the two executables `ev3_broker_client` and `ev3_broker_server`.
 
+**Note:** on BSD use `gmake` (GNU Make) instead of `make`.
+
 Execute
 ```sh
 ./ev3_broker_server --help
