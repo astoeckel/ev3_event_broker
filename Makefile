@@ -38,20 +38,20 @@ $(OBJDIR)/ev3_event_broker/argparse.o: \
 		ev3_event_broker/argparse.cpp \
 		ev3_event_broker/argparse.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/argparse.cpp
 
 $(OBJDIR)/ev3_event_broker/event_loop.o: \
 		ev3_event_broker/event_loop.cpp \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/event_loop.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/event_loop.cpp
 
 $(OBJDIR)/ev3_event_broker/marshaller.o: \
 		ev3_event_broker/marshaller.cpp \
 		ev3_event_broker/marshaller.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/marshaller.cpp
 
 $(OBJDIR)/ev3_event_broker/motors.o: \
 		ev3_event_broker/motors.cpp \
@@ -61,7 +61,7 @@ $(OBJDIR)/ev3_event_broker/motors.o: \
 		ev3_event_broker/tacho_motor.hpp \
 		ev3_event_broker/virtual_motor.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/motors.cpp
 
 $(OBJDIR)/ev3_event_broker/socket.o: \
 		ev3_event_broker/socket.cpp \
@@ -74,7 +74,7 @@ $(OBJDIR)/ev3_event_broker/source_id.o: \
 		ev3_event_broker/source_id.cpp \
 		ev3_event_broker/source_id.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/source_id.cpp
 
 $(OBJDIR)/ev3_event_broker/tacho_motor.o: \
 		ev3_event_broker/tacho_motor.cpp \
@@ -82,7 +82,7 @@ $(OBJDIR)/ev3_event_broker/tacho_motor.o: \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/tacho_motor.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/tacho_motor.cpp
 
 $(OBJDIR)/ev3_event_broker/virtual_motor.o: \
 		ev3_event_broker/virtual_motor.cpp \
@@ -91,7 +91,7 @@ $(OBJDIR)/ev3_event_broker/virtual_motor.o: \
 		ev3_event_broker/tacho_motor.hpp \
 		ev3_event_broker/virtual_motor.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/virtual_motor.cpp
 
 $(OBJDIR)/main_client.o: \
 		main_client.cpp \
@@ -102,7 +102,7 @@ $(OBJDIR)/main_client.o: \
 		ev3_event_broker/socket.hpp \
 		ev3_event_broker/source_id.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ main_client.cpp
 
 $(OBJDIR)/main_server.o: \
 		main_server.cpp \
@@ -115,7 +115,7 @@ $(OBJDIR)/main_server.o: \
 		ev3_event_broker/socket.hpp \
 		ev3_event_broker/source_id.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ main_server.cpp
 
 
 ev3_broker_client: \
