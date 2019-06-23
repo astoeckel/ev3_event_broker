@@ -23,8 +23,6 @@ CPPFLAGS+=-Wall -Wextra -pedantic
 CPPFLAGS+=-I.
 CPPFLAGS+=-Ilib/json/src
 
-LDFLAGS+=-static
-
 ifeq ($(BUILD),release)
 	CPPFLAGS+=-DNDEBUG -g -O3
 else

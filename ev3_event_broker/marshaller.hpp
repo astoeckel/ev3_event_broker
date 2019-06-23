@@ -56,7 +56,7 @@ static constexpr size_t MARSHALLER_BUF_SIZE = 1280;
 /**
  * Number of characters in the source name.
  */
-static constexpr size_t N_SOURCE_NAME_CHARS = 8;
+static constexpr size_t N_SOURCE_NAME_CHARS = 16;
 
 /**
  * Number of charachters in the random source identifier.

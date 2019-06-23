@@ -169,7 +169,6 @@ class Ev3BrokerClientWrapper:
         if not device in source["duty_cycle"]:
             source["duty_cycle"][device] = None
 
-#        if duty_cycle != source["duty_cycle"][device]:
         # Send the message
         if self.send_message(
                 source,

@@ -3,7 +3,7 @@ __pycache__
 a.out
 ev3_broker_client
 ev3_broker_server
-motor
+motors
 vgcore.*
 .gdb_history
 python/*.cfg
