@@ -22,10 +22,15 @@ CPPFLAGS+=-Wno-psabi # Silence warning when compiling for ARM
 CPPFLAGS+=-Wall -Wextra -pedantic
 CPPFLAGS+=-I.
 CPPFLAGS+=-Ilib/json/src
-CPPFLAGS+=-DNDEBUG -g -O3
 
-.OBJDIR=./ # BSD make working directory
-OBJDIR=obj # Target directory
+ifeq ($(BUILD),release)
+	CPPFLAGS+=-DNDEBUG -g -O3
+else
+	CPPFLAGS+=-g -O0
+	CPPFLAGS+=-DDEBUG
+endif
+
+OBJDIR=obj
 MKOBJ=$(CXX) $(CPPFLAGS) $(FLAGS) -c
 
 all: ev3_broker_client ev3_broker_server
@@ -38,21 +43,21 @@ clean:
 $(OBJDIR)/ev3_event_broker/argparse.o: \
 		ev3_event_broker/argparse.cpp \
 		ev3_event_broker/argparse.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/argparse.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/event_loop.o: \
 		ev3_event_broker/event_loop.cpp \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/event_loop.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/event_loop.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/marshaller.o: \
 		ev3_event_broker/marshaller.cpp \
 		ev3_event_broker/marshaller.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/marshaller.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/motors.o: \
 		ev3_event_broker/motors.cpp \
@@ -61,29 +66,29 @@ $(OBJDIR)/ev3_event_broker/motors.o: \
 		ev3_event_broker/motors.hpp \
 		ev3_event_broker/tacho_motor.hpp \
 		ev3_event_broker/virtual_motor.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/motors.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/socket.o: \
 		ev3_event_broker/socket.cpp \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/socket.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/socket.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/source_id.o: \
 		ev3_event_broker/source_id.cpp \
 		ev3_event_broker/source_id.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/source_id.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/tacho_motor.o: \
 		ev3_event_broker/tacho_motor.cpp \
 		ev3_event_broker/common.hpp \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/tacho_motor.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/tacho_motor.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/ev3_event_broker/virtual_motor.o: \
 		ev3_event_broker/virtual_motor.cpp \
@@ -91,8 +96,8 @@ $(OBJDIR)/ev3_event_broker/virtual_motor.o: \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/tacho_motor.hpp \
 		ev3_event_broker/virtual_motor.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ ev3_event_broker/virtual_motor.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/main_client.o: \
 		main_client.cpp \
@@ -102,8 +107,8 @@ $(OBJDIR)/main_client.o: \
 		ev3_event_broker/marshaller.hpp \
 		ev3_event_broker/socket.hpp \
 		ev3_event_broker/source_id.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ main_client.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 $(OBJDIR)/main_server.o: \
 		main_server.cpp \
@@ -115,8 +120,8 @@ $(OBJDIR)/main_server.o: \
 		ev3_event_broker/virtual_motor.hpp \
 		ev3_event_broker/socket.hpp \
 		ev3_event_broker/source_id.hpp
-	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ main_server.cpp
+	mkdir -pv $(dir $@)
+	$(MKOBJ) -o $@ $<
 
 
 ev3_broker_client: \
