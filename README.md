@@ -18,9 +18,9 @@ The programs in this repository are designed to be relatively fast ‒ for examp
 ## Overview
 *EV3 Event Broker* is based on a simple UDP-based message protocol (see below for a description of the format). Each EV3 device in the network is assigned a unique name which can be used to identify their IP address on the network.
 
-`ev3_broker_server` runs on the LEGO® brick and broadcasts sensor data as UDP packages. At the same time it waits for incoming UDP packages containing commands, such as setting the duty cycle of a motor.
+`ev3_broker_server` runs on the LEGO® brick and broadcasts sensor data as UDP packages. At the same time it waits for incoming UDP packages containing commands, such as setting the duty cycle of a motor. See below for a description of the binary message format.
 
-`ev3_broker_client` receives messages from all bricks on the network and writes them to stdout. Data is encapsulated in JSON and can thus be easily processed in another application. Furthermore, it waits on stdin for JSON-encapsulated strings containing commands.
+`ev3_broker_client` receives messages from all bricks on the network and writes them to stdout. Data is encapsulated in JSON and can thus be easily processed in another application. Furthermore, `ev3_broker_client` waits on stdin for JSON-encapsulated strings containing commands. See below for a description of the JSON message format.
 
 ## Downloading and Compiling
 
