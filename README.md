@@ -25,7 +25,9 @@ The programs in this repository are designed to be relatively fast ‒ for examp
 ## Downloading and Compiling
 
 ### Compile for the host platform
-To download and compile the prorams described above make sure to have a recent version of `make` and `g++`/`clang++` installed. Compilation was tested on Debian 9, Fedora 30, FreeBSD 12 and a recent version of MacOS.
+To download and compile the prorams described above make sure to have a recent version of GNU make and a C++14 compliant compiler such as `g++` or `clang++` installed. Compilation was tested on Debian 9, Fedora 30, FreeBSD 12 and a recent version of MacOS.
+
+To download and compile the software execute
 ```sh
 git clone https://github.com/astoeckel/ev3_event_broker --recursive
 cd ev3_event_broker
@@ -33,7 +35,7 @@ make
 ```
 This should create the two executables `ev3_broker_client` and `ev3_broker_server`.
 
-**Note:** Use `gmake` (GNU Make) instead of `make` on FreeBSD.
+**Note:** Make sure to use `gmake` (GNU Make) instead of `make` on FreeBSD.
 
 Execute
 ```sh
