@@ -206,7 +206,7 @@ Position   |    4 Bytes | unsigned int
 ### Set duty cycle (`client --> server`)
 ```
 Type       |    1 Byte  | 0x02
-Device     |   16 Bytes | string (16 chars)
+Device     |   16 Bytes | string
 Duty cycle |    4 Bytes | signed int
 ```
 
