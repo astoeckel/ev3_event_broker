@@ -67,16 +67,6 @@ Next, run the `make_virtual_motor_dirs.sh` script. This will create a directory 
 
 **Note:** Make sure to execute the above commands in a fresh directory or execute `make clean` before setting the `CPPFLAGS` environment variable; otherwise `make` will not re-compile the executables.
 
-### Debug build
-
-Set the environment variable `BUILD` to `debug`, like so
-```sh
-BUILD=debug make
-```
-You can now debug the generated executables using `gdb`.
-
-**Note:** Make sure to execute the above commands in a fresh directory or execute `make clean` before setting the `BUILD` environment variable; otherwise `make` will not re-compile the executables.
-
 ## Nengo integration
 
 The following example shows how to safely integrate *EV3 Event Broker* into a Nengo GUI script. This script will create a node that has four inputs (corresponding to the torques applied to the four possible motors, normalised to -1.0 to 1.0) and four outputs (normalised to 1.0 = 360°).
