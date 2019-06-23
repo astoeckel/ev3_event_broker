@@ -24,7 +24,8 @@ CPPFLAGS+=-I.
 CPPFLAGS+=-Ilib/json/src
 CPPFLAGS+=-DNDEBUG -g -O3
 
-OBJDIR=obj
+.OBJDIR=./ # BSD make working directory
+OBJDIR=obj # Target directory
 MKOBJ=$(CXX) $(CPPFLAGS) $(FLAGS) -c
 
 all: ev3_broker_client ev3_broker_server
@@ -68,7 +69,7 @@ $(OBJDIR)/ev3_event_broker/socket.o: \
 		ev3_event_broker/error.hpp \
 		ev3_event_broker/socket.hpp
 	mkdir -pv $$(dirname $@)
-	$(MKOBJ) -o $@ $<
+	$(MKOBJ) -o $@ ev3_event_broker/socket.cpp
 
 $(OBJDIR)/ev3_event_broker/source_id.o: \
 		ev3_event_broker/source_id.cpp \
